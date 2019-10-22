@@ -46,7 +46,8 @@ int main(int argc, const char * argv[]) {
     char fileSize[BUFLEN];
     strcpy(fileSize,argv[3]);
     
-    
+    char buf[BUFLEN];
+    strcat(buf, mapID);
     /*
      Sources for setting up socket:
      Eduonix Learning Solutions: https://www.youtube.com/watch?v=LtXEMwSG5-8

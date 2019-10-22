@@ -26,7 +26,7 @@ using namespace std;
 #define SERVERAPORT 21984
 #define SERVERBPORT 22984
 #define BACKLOG 3 // backlog of pending connections for listen
-#define BUFLEN 256
+#define BUFLEN 10
 
 int main (){
     
@@ -34,10 +34,10 @@ int main (){
     // *** 1. CREATE SOCKET ***
       
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    char buf [BUFLEN + 1];
-    char mapID [10];
-    char vertexIndex[10];
-    char fileSize[10];
+    char buf [BUFLEN];
+    char mapID [BUFLEN];
+    char vertexIndex[BUFLEN];
+    char fileSize[BUFLEN];
           
     int recvLen1, recvLen2, recvLen3, recvLen4;
     
@@ -78,12 +78,13 @@ int main (){
         }
     
     // *** 5. RECEIVE DATA FROM CLIENT ***
-        /*
+        
         recvLen1 = recv(new_sockfd, mapID, sizeof(mapID), 0);
         recvLen2 = recv(new_sockfd, vertexIndex, sizeof(vertexIndex), 0);
         recvLen3 = recv(new_sockfd, fileSize, sizeof(fileSize), 0);
-        */
-         //cout << recvLen1 << " " << recvLen2 << " " << recvLen1 << endl;
+        
+         cout << "DEBUG RECVLEN:" << recvLen1 << " " << recvLen2 << " " << recvLen3 << endl;
+        /*
         recvLen4 = recv(new_sockfd, buf, BUFLEN, 0);
         
         buf[recvLen4] = '\0';
@@ -92,12 +93,13 @@ int main (){
         {
             printf("%s", buf);
         }
-//        mapID[recvLen1] = '\0';
-//        vertexIndex[recvLen2] = '\0';
-//        fileSize[recvLen3] = '\0';
+         */
+        mapID[recvLen1] = '\0';
+        vertexIndex[recvLen2] = '\0';
+        fileSize[recvLen3] = '\0';
         
         // output message for receiving data from client
-        cout << buf << endl;
+//        cout << buf << endl;
         cout << "The AWS has received map ID " << mapID << ", start vertex " << vertexIndex << " and file size " << fileSize << " from the client using TCP over port " << TCPPORT << endl;
     }
     return 0;
