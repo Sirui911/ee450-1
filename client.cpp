@@ -21,6 +21,7 @@
 
 #define LOCALIP "127.0.0.1" // IP Address of Host
 #define AWSPORT 24984 // TCP Port # of AWS server
+#define BUFLEN 10 // Length of socket stream buffer
 
 using namespace std;
 
@@ -36,12 +37,15 @@ int main(int argc, const char * argv[]) {
     
     /* ADD VALID INPUT CHECKING */
     
-    string mapID = argv[1];
-    int vertexIndex = atoi(argv[2]);
-    int fileSize = atoi(argv[3]);
+    char mapID[BUFLEN];
+    strcpy(mapID,argv[1]);
     
-    string vertexIndexStr = argv[2];
-    string fileSizeStr = argv[3];
+    char vertexIndex[BUFLEN];
+    strcpy(vertexIndex,argv[2]);
+    
+    char fileSize[BUFLEN];
+    strcpy(fileSize,argv[3]);
+    
     
     /*
      Sources for setting up socket:
@@ -91,19 +95,19 @@ int main(int argc, const char * argv[]) {
     // *** SEND DATA TO AWS ***
     
     // int send(int sockfd, const void *msg, int len, int flags);
-    if (send(sockfd, mapID.c_str(), mapID.length(), 0) == -1){
+    if (send(sockfd, mapID, strlen(mapID), 0) == -1){
         cout << "Error sending data to server socket" << endl;
     }
-    if (send(sockfd, vertexIndexStr.c_str(), vertexIndexStr.length(), 0) == -1){
+    if (send(sockfd, vertexIndex, strlen(vertexIndex), 0) == -1){
         cout << "Error sending data to server socket" << endl;
     }
-    if (send(sockfd, fileSizeStr.c_str(), fileSizeStr.length(), 0) == -1){
+    if (send(sockfd, fileSize, strlen(fileSize), 0) == -1){
         cout << "Error sending data to server socket" << endl;
     }
     
+    // Print message of data sent to AWS
     cout << "The client has sent query to AWS using TCP over port: " << AWSPORT << " start vertex " << vertexIndex << "; map: " << mapID << "; file size: " << fileSize << "." << endl;
     
-    // cout << sentLen << endl;
 
     
     // *** RECEIVE DATA FROM AWS AND PRINT RESULT ***
