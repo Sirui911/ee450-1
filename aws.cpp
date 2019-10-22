@@ -79,28 +79,41 @@ int main (){
     
     // *** 5. RECEIVE DATA FROM CLIENT ***
         
+        /*
         recvLen1 = recv(new_sockfd, mapID, sizeof(mapID), 0);
         recvLen2 = recv(new_sockfd, vertexIndex, sizeof(vertexIndex), 0);
         recvLen3 = recv(new_sockfd, fileSize, sizeof(fileSize), 0);
         
          cout << "DEBUG RECVLEN:" << recvLen1 << " " << recvLen2 << " " << recvLen3 << endl;
-        /*
-        recvLen4 = recv(new_sockfd, buf, BUFLEN, 0);
+        */
+        recvLen1 = recv(new_sockfd, buf, BUFLEN, 0);
         
-        buf[recvLen4] = '\0';
-        cout << recvLen4 << endl;
-        for (int i = 0; i<recvLen4; i++)
-        {
-            printf("%s", buf);
+        buf[recvLen1] = '\0';
+     
+        
+//      Separate buffer message into mapID, vertexIndex, and fileSize
+        mapID[0] = buf[0];
+        mapID[strlen(mapID)] = '\0';
+        int i = 2;
+        int j = 0;
+        while (buf[i] != ' '){
+            vertexIndex[j] = buf[i];
+            i++;
+            j++;
         }
-         */
-        mapID[recvLen1] = '\0';
-        vertexIndex[recvLen2] = '\0';
-        fileSize[recvLen3] = '\0';
+        j=0;
+        while (buf[i] != '\0'){
+            fileSize[j] = buf[i+1];
+            i++;
+            j++;
+        }
+        
+        vertexIndex[strlen(vertexIndex)] = '\0';
+        fileSize[strlen(fileSize)] = '\0';
         
         // output message for receiving data from client
-//        cout << buf << endl;
         cout << "The AWS has received map ID " << mapID << ", start vertex " << vertexIndex << " and file size " << fileSize << " from the client using TCP over port " << TCPPORT << endl;
     }
     return 0;
 }
+

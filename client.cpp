@@ -17,6 +17,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <iomanip>
+#include <ctype.h>
 //#include "client.h"
 
 #define LOCALIP "127.0.0.1" // IP Address of Host
@@ -30,24 +31,45 @@ int main(int argc, const char * argv[]) {
    
    /*
 	example client input
-	./client <Map ID> <Source Vertex Index> <File Size (bits)>
+	./client <Map ID> <Source Vertex Index> <File Size>
 	*/ 
 
+    /* ADD VALID INPUT CHECKING */
+    
+    if (argc != 4){
+        cout << "Please input in the following format: " << endl << "'./client <Map ID> <Source Vertex Index> <File Size>'" << endl;
+        return EXIT_FAILURE;
+    }
+    if (!isalpha(*argv[1])){
+        cout << "Map ID must be a letter" << endl;
+        return EXIT_FAILURE;
+    }
+    if (!(isdigit(*argv[2]) && isdigit(*argv[3]))){
+        cout << "Source vertex index and file size must be numerical digits" << endl;
+        return EXIT_FAILURE;
+    }
+    
     cout << "The client is up and running." << endl;
     
-    /* ADD VALID INPUT CHECKING */
+    
     
     char mapID[BUFLEN];
     strcpy(mapID,argv[1]);
     
     char vertexIndex[BUFLEN];
     strcpy(vertexIndex,argv[2]);
-    
+
     char fileSize[BUFLEN];
     strcpy(fileSize,argv[3]);
     
+    //store all values in buffer to pass through sock stream
     char buf[BUFLEN];
     strcat(buf, mapID);
+    strcat(buf, " ");
+    strcat(buf, vertexIndex);
+    strcat(buf, " ");
+    strcat(buf, fileSize);
+    cout << buf << endl;
     /*
      Sources for setting up socket:
      Eduonix Learning Solutions: https://www.youtube.com/watch?v=LtXEMwSG5-8
@@ -96,6 +118,12 @@ int main(int argc, const char * argv[]) {
     // *** SEND DATA TO AWS ***
     
     // int send(int sockfd, const void *msg, int len, int flags);
+    
+    if (send(sockfd, buf, strlen(buf), 0) == -1){
+        cout << "Error sending data to server socket" << endl;
+    }
+    
+    /*
     if (send(sockfd, mapID, strlen(mapID), 0) == -1){
         cout << "Error sending data to server socket" << endl;
     }
@@ -105,7 +133,8 @@ int main(int argc, const char * argv[]) {
     if (send(sockfd, fileSize, strlen(fileSize), 0) == -1){
         cout << "Error sending data to server socket" << endl;
     }
-    
+    */
+     
     // Print message of data sent to AWS
     cout << "The client has sent query to AWS using TCP over port: " << AWSPORT << " start vertex " << vertexIndex << "; map: " << mapID << "; file size: " << fileSize << "." << endl;
     
