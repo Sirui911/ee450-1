@@ -42,8 +42,8 @@ int main (){
           
     int recvLen1, recvLen2, recvLen3, recvLen4;
     
-    // Boot up message
-    cout << "The AWS is up and running." << endl;
+    // ServerA boot up message
+    cout << "The Server A is up and running using UDP on port " << SERVERAPORT << "." << endl;
     
     // specify serverA address
     struct sockaddr_in servAddr;
@@ -60,7 +60,7 @@ int main (){
     }
     
     
-    
+    /*
     // infinite while loop for AWS to accept TCP client connections
     while (1) {
     
@@ -72,6 +72,7 @@ int main (){
         
          cout << "DEBUG RECVLEN:" << recvLen1 << " " << recvLen2 << " " << recvLen3 << endl;
     }
+     */
     return 0;
 }
 
