@@ -61,7 +61,16 @@ int init_UDP(){
     return EXIT_SUCCESS;
 }
 
-
+void recvFromAWS(){
+    socklen_t awsLen = sizeof(awsAddrUDP);
+//    recv map ID
+    recvLen1 = recvfrom(serverA_sockfd, mapID, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen);
+        
+//    recv source vertex index
+    recvLen1 = recvfrom(serverA_sockfd, vertexIndex, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen);
+        
+    cout << "The Server A has received input for finding shortest paths: starting vertex " << vertexIndex << " of map " << mapID << "." << endl;
+}
 
 
 
@@ -79,14 +88,8 @@ int main (){
 //    int recvfrom(int sockfd, void *buf, int len, unsigned int flags, struct sockaddr *from, int *fromlen);
     
     while(1){
-    socklen_t awsLen = sizeof(awsAddrUDP);
-    recvLen1 = recvfrom(serverA_sockfd, buf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen);
-    
-    cout << buf << endl;
+        recvFromAWS();
         
-    recvLen1 = recvfrom(serverA_sockfd, buf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen);
-        
-    cout << buf << endl;
     }
 //    read map
     

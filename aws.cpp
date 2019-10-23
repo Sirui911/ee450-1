@@ -121,6 +121,7 @@ void sentToA(){
         cout << "Error sending UDP message to Server A from AWS." << endl;
     }
     
+    cout << "The AWS has sent map ID and starting vertex to server A using UDP over port " << SERVERAPORT << endl;
 }
 
 int main (){
