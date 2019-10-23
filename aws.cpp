@@ -28,25 +28,27 @@ using namespace std;
 #define BACKLOG 3 // backlog of pending connections for listen
 #define BUFLEN 10
 
-int aws_TCP_sockfd;
 char buf [BUFLEN];
 char mapID [BUFLEN];
 char vertexIndex[BUFLEN];
 char fileSize[BUFLEN];
-int recvLen1, recvLen2, recvLen3, recvLen4;
+int recvLen1, sendLen;
 
-struct sockaddr_in awsAddrTCP;
-int client_sockfd;
+struct sockaddr_in awsAddrTCP, awsAddrUDP;
+int aws_TCP_sockfd, aws_UDP_sockfd;
+
 struct sockaddr_in clientAddr;
+int client_sockfd;
 
 struct sockaddr_in serverAAddr, serverBAddr;
-int aws_UDP_sockfd, serverA_sockfd, severB_sockfd;
+int serverA_sockfd, severB_sockfd;
 
+// Initializes TCP Port on AWS
 int init_TCP(){
     
     // *** 1. CREATE SOCKET ***
        if ( (aws_TCP_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-           cout << "Error creating socket." << endl;
+           cout << "Error creating TCP socket." << endl;
            return EXIT_FAILURE;
        }
        // specify AWS address
@@ -59,7 +61,7 @@ int init_TCP(){
        // *** 2. BIND SOCKET ***
        
        if (bind(aws_TCP_sockfd, (struct sockaddr *) &awsAddrTCP, sizeof(awsAddrTCP)) == -1 ){
-           cout << "Error binding socket." << endl;
+           cout << "Error binding TCP socket." << endl;
            return EXIT_FAILURE;
        }
     // *** 3. LISTEN FOR CONNECTIONS ***
@@ -69,11 +71,61 @@ int init_TCP(){
     return EXIT_SUCCESS;
 }
 
+int init_UDP(){
+    // *** 1. CREATE SOCKET ***
+    if ( (aws_UDP_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ){
+        cout << "Error creating UDP socket." << endl;
+        return EXIT_FAILURE;
+    }
 
+    // specify AWS address
+    
+    awsAddrUDP.sin_family = AF_INET;
+    //AWS Port #
+    awsAddrUDP.sin_port = htons(UDPPORT);
+    //AWS IP ADDR - INADDR_LOOPBACK refers to localhost ("127.0.0.1")
+    awsAddrUDP.sin_addr.s_addr = inet_addr(LOCALIP);
+    
+    // *** 2. BIND SOCKET ***
+    
+    if (bind(aws_UDP_sockfd, (struct sockaddr *) &awsAddrUDP, sizeof(awsAddrUDP)) == -1 ){
+        cout << "Error binding UDP socket." << endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+void setServerAB(){
+//    Server A
+    serverAAddr.sin_family = AF_INET;
+    //AWS Port #
+    serverAAddr.sin_port = htons(SERVERAPORT);
+    //AWS IP ADDR - INADDR_LOOPBACK refers to localhost ("127.0.0.1")
+    serverAAddr.sin_addr.s_addr = inet_addr(LOCALIP);
+    
+//    Server B
+    serverBAddr.sin_family = AF_INET;
+    //AWS Port #
+    serverBAddr.sin_port = htons(SERVERBPORT);
+    //AWS IP ADDR - INADDR_LOOPBACK refers to localhost ("127.0.0.1")
+    serverBAddr.sin_addr.s_addr = inet_addr(LOCALIP);
+}
+
+// Sends Map ID and Vertex index to Server A via UDP
+void sentToA(){
+    
+    if ((sendLen = sendto(aws_UDP_sockfd, &mapID, sizeof(mapID), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
+        cout << "Error sending UDP message to Server A from AWS." << endl;
+    }
+    if ((sendLen = sendto(aws_UDP_sockfd, &vertexIndex, sizeof(vertexIndex), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
+        cout << "Error sending UDP message to Server A from AWS." << endl;
+    }
+    
+}
 
 int main (){
     
-    // ********* FOR CLIENT SOCKET CONNECTION *********
+    
     
     if (init_TCP() == EXIT_FAILURE){
         return EXIT_FAILURE;
@@ -82,16 +134,20 @@ int main (){
     cout << "The AWS is up and running." << endl;
     
     
+    if (init_UDP() == EXIT_FAILURE){
+        return EXIT_FAILURE;
+    }
     
-    
+    setServerAB();
+    // ********* FOR CLIENT SOCKET CONNECTION *********
     // *** 4. ACCEPT CONNECTIONS ***
     
-    //clientlen from CMU class notes
-    socklen_t clientLen = sizeof(clientAddr);
+    
     
 //     infinite while loop for AWS to accept TCP client connections
     while (1) {
-    
+        //clientlen from CMU class notes
+        socklen_t clientLen = sizeof(clientAddr);
         //int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
         if ( (client_sockfd = accept(aws_TCP_sockfd,(struct sockaddr *) &clientAddr, &clientLen)) == -1  ){
             cout << "Error accepting socket." << endl;
@@ -129,26 +185,16 @@ int main (){
         
         // output message for receiving data from client
         cout << "The AWS has received map ID " << mapID << ", start vertex " << vertexIndex << " and file size " << fileSize << " from the client using TCP over port " << TCPPORT << endl;
+        
+        
+        sentToA();
+        
     } // end of while
     
     
-//    ************************** UDP Setup *****************************
     
-    // *** 1. CREATE SOCKET ***
-    serverA_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    // specify AWS address
     
-    serverAAddr.sin_family = AF_INET;
-    //AWS Port #
-    serverAAddr.sin_port = htons(UDPPORT);
-    //AWS IP ADDR - INADDR_LOOPBACK refers to localhost ("127.0.0.1")
-    serverAAddr.sin_addr.s_addr = inet_addr(LOCALIP);
     
-    // *** 2. BIND SOCKET ***
-    
-    if (bind(serverA_sockfd, (struct sockaddr *) &serverAAddr, sizeof(serverAAddr)) == -1 ){
-        cout << "Error binding socket." << endl;
-    }
     
     return EXIT_SUCCESS;
 }
