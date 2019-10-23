@@ -22,7 +22,6 @@ using namespace std;
 #define LOCALIP "127.0.0.1" // IP Address of Host
 #define UDPPORT 23984 // UDP Port # backend servers connects to
 #define SERVERAPORT 21984
-#define BACKLOG 3 // backlog of pending connections for listen
 #define BUFLEN 10 // Length of socket stream buffer
 
 char buf [BUFLEN];
@@ -37,11 +36,11 @@ int aws_UDP_sockfd;
 struct sockaddr_in serverAAddr;
 int serverA_sockfd;
 
-int init_UDP(){
+void init_UDP(){
     // *** 1. CREATE SOCKET ***
     if ( (serverA_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ){
-        cout << "Error creating UDP socket." << endl;
-        return EXIT_FAILURE;
+        perror("Error creating UDP socket");
+        exit(EXIT_FAILURE);
     }
     
     // specify ServerA address
@@ -55,19 +54,24 @@ int init_UDP(){
     // *** 2. BIND SOCKET ***
     
     if (bind(serverA_sockfd, (struct sockaddr *) &serverAAddr, sizeof(serverAAddr)) == -1 ){
-        cout << "Error binding UDP socket." << endl;
-        return EXIT_FAILURE;
+        perror("Error binding UDP socket");
+        exit(EXIT_FAILURE);
     }
-    return EXIT_SUCCESS;
 }
 
 void recvFromAWS(){
     socklen_t awsLen = sizeof(awsAddrUDP);
 //    recv map ID
-    recvLen1 = recvfrom(serverA_sockfd, mapID, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen);
+    if ((recvLen1 = recvfrom(serverA_sockfd, mapID, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen)) < 1){
+        perror("Error receiving from AWS");
+        exit(EXIT_FAILURE);
+    }
         
 //    recv source vertex index
-    recvLen1 = recvfrom(serverA_sockfd, vertexIndex, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen);
+    if ((recvLen1 = recvfrom(serverA_sockfd, vertexIndex, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen)) < 1){
+        perror("Error receiving from AWS");
+        exit(EXIT_FAILURE);
+    }
         
     cout << "The Server A has received input for finding shortest paths: starting vertex " << vertexIndex << " of map " << mapID << "." << endl;
 }
@@ -77,9 +81,7 @@ void recvFromAWS(){
 
 int main (){
 
-    if (init_UDP() == EXIT_FAILURE){
-        return EXIT_FAILURE;
-    }
+    init_UDP();
     
     // ServerA boot up message
     cout << "The Server A is up and running using UDP on port " << SERVERAPORT << "." << endl;

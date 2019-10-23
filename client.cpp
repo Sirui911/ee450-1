@@ -38,15 +38,15 @@ int main(int argc, const char * argv[]) {
     
     if (argc != 4){
         cout << "Please input in the following format: " << endl << "'./client <Map ID> <Source Vertex Index> <File Size>'" << endl;
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     if (!isalpha(*argv[1])){
         cout << "Map ID must be a letter" << endl;
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     if (!(isdigit(*argv[2]) && isdigit(*argv[3]))){
         cout << "Source vertex index and file size must be numerical digits" << endl;
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     
     cout << "The client is up and running." << endl;
@@ -99,7 +99,8 @@ int main(int argc, const char * argv[]) {
     */
 
     if ( connect(sockfd, (struct sockaddr *) &servAddr, sizeof(servAddr)) == -1){
-        cout << "Error connecting to server" << endl;
+        perror("Error connecting to server");
+        exit(EXIT_FAILURE);
     }
     
     
@@ -120,7 +121,8 @@ int main(int argc, const char * argv[]) {
     // int send(int sockfd, const void *msg, int len, int flags);
     
     if (send(sockfd, buf, strlen(buf), 0) == -1){
-        cout << "Error sending data to server socket" << endl;
+        perror("Error sending data to server socket");
+        exit(EXIT_FAILURE);
     }
     
     /*

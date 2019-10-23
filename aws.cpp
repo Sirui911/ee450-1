@@ -44,12 +44,12 @@ struct sockaddr_in serverAAddr, serverBAddr;
 int serverA_sockfd, severB_sockfd;
 
 // Initializes TCP Port on AWS
-int init_TCP(){
+void init_TCP(){
     
     // *** 1. CREATE SOCKET ***
        if ( (aws_TCP_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-           cout << "Error creating TCP socket." << endl;
-           return EXIT_FAILURE;
+           perror("Error creating TCP socket");
+           exit(EXIT_FAILURE);
        }
        // specify AWS address
        awsAddrTCP.sin_family = AF_INET;
@@ -61,21 +61,20 @@ int init_TCP(){
        // *** 2. BIND SOCKET ***
        
        if (bind(aws_TCP_sockfd, (struct sockaddr *) &awsAddrTCP, sizeof(awsAddrTCP)) == -1 ){
-           cout << "Error binding TCP socket." << endl;
-           return EXIT_FAILURE;
+           perror("Error binding TCP socket"); //error handling found @ geeksforgeeks.org
+           exit(EXIT_FAILURE);
        }
     // *** 3. LISTEN FOR CONNECTIONS ***
     
     listen(aws_TCP_sockfd, BACKLOG);
     
-    return EXIT_SUCCESS;
 }
 
-int init_UDP(){
+void init_UDP(){
     // *** 1. CREATE SOCKET ***
     if ( (aws_UDP_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ){
-        cout << "Error creating UDP socket." << endl;
-        return EXIT_FAILURE;
+        perror("Error creating UDP socket");
+        exit(EXIT_FAILURE);
     }
 
     // specify AWS address
@@ -89,12 +88,31 @@ int init_UDP(){
     // *** 2. BIND SOCKET ***
     
     if (bind(aws_UDP_sockfd, (struct sockaddr *) &awsAddrUDP, sizeof(awsAddrUDP)) == -1 ){
-        cout << "Error binding UDP socket." << endl;
-        return EXIT_FAILURE;
+        perror("Error binding UDP socket");
+        exit(EXIT_FAILURE);
     }
-    return EXIT_SUCCESS;
 }
 
+void acceptFromClient(){
+    //clientlen from CMU class notes
+    socklen_t clientLen = sizeof(clientAddr);
+    //int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+    if ( (client_sockfd = accept(aws_TCP_sockfd,(struct sockaddr *) &clientAddr, &clientLen)) == -1  ){
+        perror("Error accepting socket");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void recvFromClient(){
+    if ((recvLen1 = recv(client_sockfd, buf, BUFLEN, 0)) < 0){
+        perror("Error receiving message from client");
+        exit(EXIT_FAILURE);
+    }
+           
+    buf[recvLen1] = '\0';
+}
+
+// Sets port and IP of serverA and serverB
 void setServerAB(){
 //    Server A
     serverAAddr.sin_family = AF_INET;
@@ -115,10 +133,12 @@ void setServerAB(){
 void sentToA(){
     
     if ((sendLen = sendto(aws_UDP_sockfd, &mapID, sizeof(mapID), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
-        cout << "Error sending UDP message to Server A from AWS." << endl;
+        perror("Error sending UDP message to Server A from AWS");
+        exit(EXIT_FAILURE);
     }
     if ((sendLen = sendto(aws_UDP_sockfd, &vertexIndex, sizeof(vertexIndex), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
-        cout << "Error sending UDP message to Server A from AWS." << endl;
+        perror("Error sending UDP message to Server A from AWS");
+        exit(EXIT_FAILURE);
     }
     
     cout << "The AWS has sent map ID and starting vertex to server A using UDP over port " << SERVERAPORT << endl;
@@ -128,41 +148,26 @@ int main (){
     
     
     
-    if (init_TCP() == EXIT_FAILURE){
-        return EXIT_FAILURE;
-    }
+    init_TCP();
     // Boot up message
     cout << "The AWS is up and running." << endl;
     
     
-    if (init_UDP() == EXIT_FAILURE){
-        return EXIT_FAILURE;
-    }
+    init_UDP();
     
     setServerAB();
     // ********* FOR CLIENT SOCKET CONNECTION *********
-    // *** 4. ACCEPT CONNECTIONS ***
+    
     
     
     
 //     infinite while loop for AWS to accept TCP client connections
     while (1) {
-        //clientlen from CMU class notes
-        socklen_t clientLen = sizeof(clientAddr);
-        //int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-        if ( (client_sockfd = accept(aws_TCP_sockfd,(struct sockaddr *) &clientAddr, &clientLen)) == -1  ){
-            cout << "Error accepting socket." << endl;
-        }
-    
+        
+        // *** 4. ACCEPT CONNECTIONS ***
+        acceptFromClient();
     // *** 5. RECEIVE DATA FROM CLIENT ***
-        
-        recvLen1 = recv(client_sockfd, buf, BUFLEN, 0);
-        if (recvLen1 < 0){
-            cout << "Error receiving message from client" << endl;
-            return EXIT_FAILURE;
-        }
-        
-        buf[recvLen1] = '\0';
+        recvFromClient();
         
 //      Separate buffer message into mapID, vertexIndex, and fileSize
         mapID[0] = buf[0];
