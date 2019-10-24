@@ -97,7 +97,7 @@ void acceptFromClient(){
     //clientlen from CMU class notes
     socklen_t clientLen = sizeof(clientAddr);
     //int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-    if ( (client_sockfd = accept(aws_TCP_sockfd,(struct sockaddr *) &clientAddr, &clientLen)) == -1  ){
+    if ( (client_sockfd = accept(aws_TCP_sockfd,(struct sockaddr *) &clientAddr, &clientLen)) == -1){
         perror("Error accepting socket");
         exit(EXIT_FAILURE);
     }
@@ -110,6 +110,32 @@ void recvFromClient(){
     }
            
     buf[recvLen1] = '\0';
+}
+
+void separateClientBuffer(){
+    //      Separate buffer from client into mapID, vertexIndex, and fileSize
+    memset(mapID, '\0' , sizeof(mapID));
+    memset(vertexIndex, '\0' , sizeof(vertexIndex));
+    memset(fileSize, '\0' , sizeof(fileSize));
+    
+    mapID[0] = buf[0];
+    mapID[strlen(mapID)] = '\0';
+    int i = 2;
+    int j = 0;
+    while (buf[i] != ' '){
+        vertexIndex[j] = buf[i];
+        i++;
+        j++;
+    }
+    j=0;
+    while (buf[i] != '\0'){
+        fileSize[j] = buf[i+1];
+        i++;
+        j++;
+    }
+    
+    vertexIndex[strlen(vertexIndex)] = '\0';
+    fileSize[strlen(fileSize)] = '\0';
 }
 
 // Sets port and IP of serverA and serverB
@@ -130,7 +156,7 @@ void setServerAB(){
 }
 
 // Sends Map ID and Vertex index to Server A via UDP
-void sentToA(){
+void sendToA(){
     
     if ((sendLen = sendto(aws_UDP_sockfd, &mapID, sizeof(mapID), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server A from AWS");
@@ -161,41 +187,21 @@ int main (){
     
     
     
-//     infinite while loop for AWS to accept TCP client connections
+//      while(1) loop for main process for AWS to send/recv to/from client, serverA, and serverB
     while (1) {
         
         // *** 4. ACCEPT CONNECTIONS ***
         acceptFromClient();
-    // *** 5. RECEIVE DATA FROM CLIENT ***
+        // *** 5. RECEIVE DATA FROM CLIENT ***
         recvFromClient();
-        
-//      Separate buffer message into mapID, vertexIndex, and fileSize
-        mapID[0] = buf[0];
-        mapID[strlen(mapID)] = '\0';
-        int i = 2;
-        int j = 0;
-        while (buf[i] != ' '){
-            vertexIndex[j] = buf[i];
-            i++;
-            j++;
-        }
-        j=0;
-        while (buf[i] != '\0'){
-            fileSize[j] = buf[i+1];
-            i++;
-            j++;
-        }
-        
-        vertexIndex[strlen(vertexIndex)] = '\0';
-        fileSize[strlen(fileSize)] = '\0';
+        separateClientBuffer();
         
         // output message for receiving data from client
         cout << "The AWS has received map ID " << mapID << ", start vertex " << vertexIndex << " and file size " << fileSize << " from the client using TCP over port " << TCPPORT << endl;
         
+        sendToA();
         
-        sentToA();
-        
-    } // end of while
+    } // end of while(1)
     
     
     

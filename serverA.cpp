@@ -16,6 +16,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <fstream>
+#include <vector>
 //#include "serverA.h"
 using namespace std;
 
@@ -35,6 +37,19 @@ int aws_UDP_sockfd;
 
 struct sockaddr_in serverAAddr;
 int serverA_sockfd;
+
+// structure to hold map.txt
+struct graph{
+    char mapID;
+    double propSpeed; // in km/s
+    double transSpeed; // in Bytes/s
+    vector<int> node1;
+    vector<int> node2;
+    vector<int> edge; // distance in Km
+};
+// vector of struct graph to hold all possibile mapIDs
+vector<graph> graphs;
+
 
 void init_UDP(){
     // *** 1. CREATE SOCKET ***
@@ -58,6 +73,83 @@ void init_UDP(){
         exit(EXIT_FAILURE);
     }
 }
+
+
+void constructMap(){
+    
+    // Open the file "map.txt" for input
+    std::ifstream fileInput("map.txt");
+    if (fileInput.is_open()){
+        
+        // index of graphs struct
+        int graphsIndex = 0;
+        int nodeIndex = 0;
+        string word;
+        int num;
+        int i;
+        // Continue looping as long as not at EOF!
+        while (fileInput.eof() != true) {
+            // Use std::getline to grab a whole line
+            /*
+            std::string line;
+            std::getline(fileInput, line);
+            std::cout << line << std::endl;
+             */
+            if (graphsIndex == 0){
+                
+                fileInput >> word;
+            }
+            //cout << word << endl;
+            
+            // check if filestream is start of new MapID
+            if ( isalpha(word.at(0)) ){
+                i = 0;
+                graphs.push_back(graph());
+                graphs[graphsIndex].mapID = word.at(0);
+                cout << "Debug MapID: " << graphs[graphsIndex].mapID << endl;
+                
+                // store propagation speed
+                fileInput >> graphs[graphsIndex].propSpeed;
+                cout << "Debug PropSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].propSpeed << endl;
+                
+                // store Transmission speed
+                fileInput >> graphs[graphsIndex].transSpeed;
+                cout << "Debug TransSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[0].transSpeed << endl;
+                
+                // while fileInput ! isalpha
+                fileInput >> word;
+                
+                while(isalpha(word.at(0)) == false && fileInput.eof() == false ){
+                    graphs[graphsIndex].node1.push_back(stoi(word));
+                    fileInput >> word;
+                    graphs[graphsIndex].node2.push_back(stoi(word));
+                    fileInput >> word;
+                    graphs[graphsIndex].edge.push_back(stoi(word));
+                    fileInput >> word;
+                    
+                    
+                    cout << "Debug node1: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].node1[i] << endl;
+                    i++;
+                }
+                i = 0;
+                
+                // end of MapID
+                graphsIndex++;
+            }
+            
+            
+            
+        }
+        
+    }
+    
+    else {
+        std::cout << "Error: File not found :(" << std::endl;
+    }
+    
+    
+}
+
 
 void recvFromAWS(){
     socklen_t awsLen = sizeof(awsAddrUDP);
@@ -85,6 +177,8 @@ int main (){
     
     // ServerA boot up message
     cout << "The Server A is up and running using UDP on port " << SERVERAPORT << "." << endl;
+    
+    constructMap();
     
 //    recv Map ID & start Node
 //    int recvfrom(int sockfd, void *buf, int len, unsigned int flags, struct sockaddr *from, int *fromlen);

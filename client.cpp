@@ -144,13 +144,13 @@ int main(int argc, const char * argv[]) {
     
     // *** RECEIVE DATA FROM AWS AND PRINT RESULT ***
     
-    
+    /*
     
     cout << "The client has received results from AWS:" << endl;
     cout << "----------------------------------------------" << endl;
     cout << "Destination" <<setw(5) << "Min Length" << setw(7) << "Tt" << setw(6) << "Tp" << setw(5) << "Delay" << endl;
      
-    /*
+    
     Destination     Min Length       Tt      Tp     Delay
     ----------------------------------------------
     1                   10          0.10    0.10    0.20
