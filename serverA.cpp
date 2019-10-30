@@ -18,6 +18,8 @@
 #include <arpa/inet.h>
 #include <fstream>
 #include <vector>
+#include <algorithm>
+#include <iomanip>
 //#include "serverA.h"
 using namespace std;
 
@@ -43,6 +45,8 @@ struct graph{
     char mapID;
     double propSpeed; // in km/s
     double transSpeed; // in Bytes/s
+    int numVert; // number of vertices in Map
+    int numEdge; // number of edges in Map
     vector<int> node1;
     vector<int> node2;
     vector<int> edge; // distance in Km
@@ -85,8 +89,6 @@ void constructMap(){
         int graphsIndex = 0;
         int nodeIndex = 0;
         string word;
-        int num;
-        int i;
         // Continue looping as long as not at EOF!
         while (fileInput.eof() != true) {
             // Use std::getline to grab a whole line
@@ -103,7 +105,7 @@ void constructMap(){
             
             // check if filestream is start of new MapID
             if ( isalpha(word.at(0)) ){
-                i = 0;
+                nodeIndex = 0;
                 graphs.push_back(graph());
                 graphs[graphsIndex].mapID = word.at(0);
                 cout << "Debug MapID: " << graphs[graphsIndex].mapID << endl;
@@ -114,9 +116,9 @@ void constructMap(){
                 
                 // store Transmission speed
                 fileInput >> graphs[graphsIndex].transSpeed;
-                cout << "Debug TransSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[0].transSpeed << endl;
+                cout << "Debug TransSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].transSpeed << endl;
                 
-                // while fileInput ! isalpha
+                // while fileInput != isalpha and != eof
                 fileInput >> word;
                 
                 while(isalpha(word.at(0)) == false && fileInput.eof() == false ){
@@ -128,20 +130,55 @@ void constructMap(){
                     fileInput >> word;
                     
                     
-                    cout << "Debug node1: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].node1[i] << endl;
-                    i++;
+                    cout << "Debug node1: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].node1[nodeIndex] << endl;
+                    nodeIndex++;
                 }
-                i = 0;
                 
-                // end of MapID
+                
+                
                 graphsIndex++;
-            }
+            } // end of MapID
             
             
             
         }
         
-    }
+        // determine number of maps
+        
+        cout << "The Server A has constructed a list of " << graphs.size() << " maps: " << endl << "-------------------------------------------" << endl;
+        
+        
+        vector<int> combinedNodes;
+        vector<int>::iterator it;
+        for (int i = 0; i < graphs.size(); i++){
+            combinedNodes.resize(graphs[i].node1.size() + graphs[i].node2.size());
+            copy(graphs[i].node1.begin(), graphs[i].node1.end(), combinedNodes.begin());
+            copy(graphs[i].node2.begin(), graphs[i].node2.end(), combinedNodes.begin() + graphs[i].node1.size() );
+            
+            sort(combinedNodes.begin(),combinedNodes.end());
+            it = unique(combinedNodes.begin(), combinedNodes.end());
+            
+            
+            // determine number of edges in each map
+            graphs[i].numEdge = graphs[i].edge.size();
+            
+            combinedNodes.resize(distance(combinedNodes.begin(),it));
+            
+            // determine number of verticies in each map
+            graphs[i].numVert = combinedNodes.size();
+            
+            combinedNodes.clear();
+        }
+        
+        cout << "Map ID   Num Vertices   Num Edges" << endl << "-------------------------------------------" << endl;
+        for (int i = 0; i < graphs.size(); i++){
+            cout << graphs[i].mapID << setw(15) << graphs[i].numVert << setw(15) << graphs[i].numEdge << endl;
+        }
+
+        cout << "-------------------------------------------" << endl;
+        // A = 66, Z = 90
+
+    } // end of reading file
     
     else {
         std::cout << "Error: File not found :(" << std::endl;
