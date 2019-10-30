@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string>
+#include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -122,11 +123,13 @@ void constructMap(){
                 fileInput >> word;
                 
                 while(isalpha(word.at(0)) == false && fileInput.eof() == false ){
-                    graphs[graphsIndex].node1.push_back(stoi(word));
+//                    graphs[graphsIndex].node1.push_back(stoi(word));
+//                    stoi only works on C++11 - not this compiler version in ubuntu
+                    graphs[graphsIndex].node1.push_back(atoi(word.c_str()));
                     fileInput >> word;
-                    graphs[graphsIndex].node2.push_back(stoi(word));
+                    graphs[graphsIndex].node2.push_back(atoi(word.c_str()));
                     fileInput >> word;
-                    graphs[graphsIndex].edge.push_back(stoi(word));
+                    graphs[graphsIndex].edge.push_back(atoi(word.c_str()));
                     fileInput >> word;
                     
                     
