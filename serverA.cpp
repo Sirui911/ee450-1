@@ -48,6 +48,7 @@ struct graph{
     double transSpeed; // in Bytes/s
     int numVert; // number of vertices in Map
     int numEdge; // number of edges in Map
+    vector<vector<int> > adjmat;
     vector<int> node1;
     vector<int> node2;
     vector<int> edge; // distance in Km
@@ -169,6 +170,18 @@ void constructMap(){
             
             // determine number of verticies in each map
             graphs[i].numVert = combinedNodes.size();
+            
+            
+            //store into adjacency matrix
+            // row = node1 x col = node2
+            graphs[i].adjmat.resize(graphs[i].numVert, vector<int>(graphs[i].numVert));
+            
+            for (int j = 0; j < graphs[i].edge.size(); j++) {
+               // for (int k = 0; k < graphs[i].adjacency[j].size(); k++){
+                graphs[i].adjmat[graphs[i].node1[j]][graphs[i].node2[j]] = graphs[i].edge[j];
+                graphs[i].adjmat[graphs[i].node2[j]][graphs[i].node1[j]] = graphs[i].edge[j];
+               // }
+            }
             
             combinedNodes.clear();
         }
