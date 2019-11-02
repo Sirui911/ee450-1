@@ -21,6 +21,7 @@
 #include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <map>
 //#include "serverA.h"
 using namespace std;
 
@@ -49,6 +50,7 @@ struct graph{
     int numVert; // number of vertices in Map
     int numEdge; // number of edges in Map
     vector<vector<int> > adjmat;
+    map<int,int> nodeMap;
     vector<int> node1;
     vector<int> node2;
     vector<int> edge; // distance in Km
@@ -124,16 +126,15 @@ void constructMap(){
                 fileInput >> word;
                 
                 while(isalpha(word.at(0)) == false && fileInput.eof() == false ){
-//                    graphs[graphsIndex].node1.push_back(stoi(word));
-//                    stoi only works on C++11 - not this compiler version in ubuntu
-                    graphs[graphsIndex].node1.push_back(atoi(word.c_str()));
+                    
+                    graphs[graphsIndex].node1.push_back(stoi(word));
                     fileInput >> word;
-                    graphs[graphsIndex].node2.push_back(atoi(word.c_str()));
+                    graphs[graphsIndex].node2.push_back(stoi(word));
                     fileInput >> word;
-                    graphs[graphsIndex].edge.push_back(atoi(word.c_str()));
+                    graphs[graphsIndex].edge.push_back(stoi(word));
                     fileInput >> word;
                     
-                    
+                   // For Debug only:
                     cout << "Debug node1: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].node1[nodeIndex] << endl;
                     nodeIndex++;
                 }
@@ -161,30 +162,53 @@ void constructMap(){
             
             sort(combinedNodes.begin(),combinedNodes.end());
             it = unique(combinedNodes.begin(), combinedNodes.end());
+           
+            
+            
             
             
             // determine number of edges in each map
             graphs[i].numEdge = graphs[i].edge.size();
             
+            // vector of unique nodes
             combinedNodes.resize(distance(combinedNodes.begin(),it));
+            
+            // create map to index node numbers
+            int mapKey = 0;
+            for(it = combinedNodes.begin(); it < combinedNodes.end(); it++){
+                graphs[i].nodeMap[mapKey] = *it;
+                mapKey++;
+            }
             
             // determine number of verticies in each map
             graphs[i].numVert = combinedNodes.size();
             
             
-            //store into adjacency matrix
-            // row = node1 x col = node2
+            // create size of adjacency matrix such that:
+            // row = node1, col = node2
             graphs[i].adjmat.resize(graphs[i].numVert, vector<int>(graphs[i].numVert));
             
+            
+            int node1MapKey = -1;
+            int node2MapKey = -1;
+            //loop through nodes and construct adjacency matrix
             for (int j = 0; j < graphs[i].edge.size(); j++) {
-               // for (int k = 0; k < graphs[i].adjacency[j].size(); k++){
-                graphs[i].adjmat[graphs[i].node1[j]][graphs[i].node2[j]] = graphs[i].edge[j];
-                graphs[i].adjmat[graphs[i].node2[j]][graphs[i].node1[j]] = graphs[i].edge[j];
+                // find Key of mapped node value
+                for (auto it = graphs[i].nodeMap.begin(); it != graphs[i].nodeMap.end(); it++){
+                    if (it->second == graphs[i].node1[j]){
+                        node1MapKey = it->first;
+                    }
+                    if (it->second == graphs[i].node2[j]){
+                        node2MapKey = it->first;
+                    }
+                }
+                graphs[i].adjmat[node1MapKey][node2MapKey] = graphs[i].edge[j];
+                graphs[i].adjmat[node2MapKey][node1MapKey] = graphs[i].edge[j];
                // }
             }
             
             combinedNodes.clear();
-        }
+        } // end of for iterating through each MapID
         
         cout << "Map ID   Num Vertices   Num Edges" << endl << "-------------------------------------------" << endl;
         for (int i = 0; i < graphs.size(); i++){
@@ -201,7 +225,7 @@ void constructMap(){
     }
     
     
-}
+} // end of construct map function
 
 
 void recvFromAWS(){
