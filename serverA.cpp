@@ -55,10 +55,11 @@ struct graph{
     vector<int> node1;
     vector<int> node2;
     vector<int> edge; // distance in Km
+    vector< pair <int, int> > orderedDistPairs;
     
     void dijkstra(int source);
     int minDistance(int dist[], bool sptSet[]);
-    void printDijkstra(int dist[]);
+    void printDijkstra(vector< pair <int, int> > orderedDistPairs);
 };
 // vector of struct graph to hold all possibile mapIDs
 vector<graph> graphs;
@@ -228,7 +229,7 @@ void constructMap(){
         //DEBUG: Prints Adjacency Matrix *******
         
         int flag = 1;
-        for( auto it2 = graphs[0].nodeMap.begin(); it2 !=  graphs[0].nodeMap.end(); it2++){
+        for( auto it2 = graphs[2].nodeMap.begin(); it2 !=  graphs[2].nodeMap.end(); it2++){
             if (flag){
                 cout <<  setw(8) << it2->second;
                 flag = 0;
@@ -238,11 +239,11 @@ void constructMap(){
         }
         cout << endl << endl;
         
-        map<int, int>::iterator it1 = graphs[0].nodeMap.begin();
-        for( int i = 0; i < graphs[0].numVert; i++){
+        map<int, int>::iterator it1 = graphs[2].nodeMap.begin();
+        for( int i = 0; i < graphs[2].numVert; i++){
             cout << setw(4) << it1->second;
-             for( int j = 0; j < graphs[0].numVert; j++){
-                 cout <<  setw(4) << graphs[0].adjmat[i][j];
+             for( int j = 0; j < graphs[2].numVert; j++){
+                 cout <<  setw(4) << graphs[2].adjmat[i][j];
              }
             cout << endl;
             
@@ -294,12 +295,18 @@ int graph::minDistance(int dist[], bool sptSet[]){
 }
 
 // A utility function to print the constructed distance array
-void graph::printDijkstra(int dist[])
+void graph::printDijkstra(vector< pair <int, int> > orderedDistPairs)
 {
-    printf("Vertex \t\t Distance from Source\n");
-    for (int i = 0; i < numVert; i++)
-        printf("%d \t\t %d\n", i, dist[i]);
+    
+    cout << "The Server A has identified the following shortest paths:" << endl;
+    cout << "-----------------------------\nDestination\t\t" << "Min Length\n-----------------------------" << endl;
+
+    for ( auto it = orderedDistPairs.begin(); it != orderedDistPairs.end(); it++){
+        cout << nodeMap[it->first] << setw(20) << it->second << endl;
+    }
+    cout << "-----------------------------" << endl;
 }
+
 
 // Dijkstra algorithm resource: https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-greedy-algo-7/
 void graph::dijkstra(int source){
@@ -314,8 +321,21 @@ void graph::dijkstra(int source){
            dist[i] = INT_MAX;
            sptSet[i] = false;
     }
-       // Distance of source vertex from itself is always 0
-       dist[source] = 0;
+       
+    int sourceKey = -1;
+    // convert source node input to key so it corresponds to adjacency matrix
+    for (auto it = nodeMap.begin(); it != nodeMap.end(); it++){
+        if (it->second == source){
+            sourceKey = it->first;
+        }
+    }
+    if (sourceKey == -1){
+        cout << "Source node not found in Map" << endl;
+        exit(EXIT_FAILURE);
+    }
+        
+        // Distance of source vertex from itself is always 0
+       dist[sourceKey] = 0;
      
        // Find shortest path for all vertices
        for (int count = 0; count < numVert - 1; count++) {
@@ -336,9 +356,22 @@ void graph::dijkstra(int source){
                    dist[v] = dist[u] + adjmat[u][v];
        }
      
-       // print the constructed distance array
-       printDijkstra(dist);
+
+    // add shortest path elements in pair to reorder by distance
+    for (int i = 0; i < numVert; i++){
+        orderedDistPairs.push_back( make_pair(i ,dist[i]) );
+    }
+    
+    //lambda funct for sorting pairs by distance instead of vertex
+    std::sort(orderedDistPairs.begin(), orderedDistPairs.end(), [](const std::pair<int,int> &left, const std::pair<int,int> &right) {
+        return left.second < right.second;
+    });
+    orderedDistPairs.erase(orderedDistPairs.begin());
+    
+       // print shortest path
+       printDijkstra(orderedDistPairs);
 }
+
 
 
 int main (){
@@ -355,14 +388,15 @@ int main (){
     
     while(1){
         recvFromAWS();
-        
-        // a = 97, z = 122
-        // A = 65, Z = 90
-        
-        int testIndex = (int)(size_t)recvMapID[0];
-        cout << testIndex << endl;
+        //int graphIndex = (int)(size_t)toupper(recvMapID[0]) - 65;
+        int graphIndex = 0;
+        for (int i = 0; i < graphs.size(); i++){
+            if (graphs[i].mapID == recvMapID[0])
+                graphIndex = i;
+        }
+        //cout << testIndex << endl;
         //cout << graphs[(int)(size_t)recvMapID - 65].mapID << endl;
-        graphs[0].dijkstra(atoi(recvVertexIndex));
+        graphs[graphIndex].dijkstra(atoi(recvVertexIndex));
         
         
     }
