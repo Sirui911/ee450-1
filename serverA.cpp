@@ -58,7 +58,7 @@ struct graph{
     vector< pair <int, int> > orderedDistPairs;
     
     void dijkstra(int source);
-    int minDistance(int dist[], bool sptSet[]);
+    int minDistance(int dist[], bool spt[]);
     void printDijkstra(vector< pair <int, int> > orderedDistPairs);
 };
 // vector of struct graph to hold all possibile mapIDs
@@ -118,15 +118,15 @@ void constructMap(){
                 nodeIndex = 0;
                 graphs.push_back(graph());
                 graphs[graphsIndex].mapID = word.at(0);
-                cout << "Debug MapID: " << graphs[graphsIndex].mapID << endl;
+//                cout << "Debug MapID: " << graphs[graphsIndex].mapID << endl;
                 
                 // store propagation speed
                 fileInput >> graphs[graphsIndex].propSpeed;
-                cout << "Debug PropSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].propSpeed << endl;
+//                cout << "Debug PropSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].propSpeed << endl;
                 
                 // store Transmission speed
                 fileInput >> graphs[graphsIndex].transSpeed;
-                cout << "Debug TransSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].transSpeed << endl;
+//                cout << "Debug TransSpeed: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].transSpeed << endl;
                 
                 // while fileInput != isalpha and != eof
                 fileInput >> word;
@@ -141,7 +141,7 @@ void constructMap(){
                     fileInput >> word;
                     
                    // For Debug only:
-                    cout << "Debug node1: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].node1[nodeIndex] << endl;
+//                    cout << "Debug node1: " << graphs[graphsIndex].mapID << ": " << graphs[graphsIndex].node1[nodeIndex] << endl;
                     nodeIndex++;
                 }
                 
@@ -227,7 +227,7 @@ void constructMap(){
         
         
         //DEBUG: Prints Adjacency Matrix *******
-        
+        /*
         int flag = 1;
         for( auto it2 = graphs[2].nodeMap.begin(); it2 !=  graphs[2].nodeMap.end(); it2++){
             if (flag){
@@ -249,7 +249,7 @@ void constructMap(){
             
             it1++;
         }
-        
+        */
        
 
     } // end of reading file
@@ -281,12 +281,12 @@ void recvFromAWS(){
 
 // A utility function to find the vertex with minimum distance value, from
 // the set of vertices not yet included in shortest path tree
-int graph::minDistance(int dist[], bool sptSet[]){
+int graph::minDistance(int dist[], bool spt[]){
     // Initialize min value
     int min = INT_MAX, min_index;
   
     for (int v = 0; v < numVert; v++){
-        if (sptSet[v] == false && dist[v] <= min){
+        if (spt[v] == false && dist[v] <= min){
             min = dist[v];
             min_index = v;
         }
@@ -310,16 +310,18 @@ void graph::printDijkstra(vector< pair <int, int> > orderedDistPairs)
 
 // Dijkstra algorithm resource: https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-greedy-algo-7/
 void graph::dijkstra(int source){
+    
+    
     int dist[numVert]; // The output array.  dist[i] will hold the shortest
        // distance from src to i
      
-       bool sptSet[numVert]; // sptSet[i] will be true if vertex i is included in shortest
+       bool spt[numVert]; // spt[i] will be true if vertex i is included in shortest
        // path tree or shortest distance from src to i is finalized
      
-       // Initialize all distances as INFINITE and stpSet[] as false
+       // Initialize all distances as INFINITE and spt[] as false
     for (int i = 0; i < numVert; i++){
            dist[i] = INT_MAX;
-           sptSet[i] = false;
+           spt[i] = false;
     }
        
     int sourceKey = -1;
@@ -341,19 +343,21 @@ void graph::dijkstra(int source){
        for (int count = 0; count < numVert - 1; count++) {
            // Pick the minimum distance vertex from the set of vertices not
            // yet processed. u is always equal to src in the first iteration.
-           int u = minDistance(dist, sptSet);
+           int node1 = minDistance(dist, spt);
      
-           // Mark the picked vertex as processed
-           sptSet[u] = true;
+           // add node1 in SPT
+           spt[node1] = true;
      
            // Update dist value of the adjacent vertices of the picked vertex.
-           for (int v = 0; v < numVert; v++)
+           for (int node2 = 0; node2 < numVert; node2++){
      
-               // Update dist[v] only if is not in sptSet, there is an edge from
-               // u to v, and total weight of path from src to  v through u is
-               // smaller than current value of dist[v]
-               if (!sptSet[v] && adjmat[u][v] && dist[u] != INT_MAX && dist[u] + adjmat[u][v] < dist[v])
-                   dist[v] = dist[u] + adjmat[u][v];
+               // Update dist[v] only if is not in spt, there is an edge from
+               // node1 to node2, and total weight of path from src to node2 through node1 is
+               // smaller than current value of dist[node2]
+               if (!spt[node2] && adjmat[node1][node2] && dist[node1] != INT_MAX && dist[node1] + adjmat[node1][node2] < dist[node2]){
+                   dist[node2] = dist[node1] + adjmat[node1][node2];
+               }
+           }
        }
      
 
@@ -372,7 +376,48 @@ void graph::dijkstra(int source){
        printDijkstra(orderedDistPairs);
 }
 
+// send shortest paths
+void sendToAws(int graphIndex){
+    char buf [BUFLEN];
+    char destBuf[BUFLEN];
+    char lenBuf[BUFLEN];
+    int sendLen;
+    // send destination and min length to AWS
+    for ( auto it = graphs[graphIndex].orderedDistPairs.begin(); it != graphs[graphIndex].orderedDistPairs.end(); it++){
+        
+        *buf = (char)graphs[graphIndex].nodeMap[it->first];
+        strcpy(destBuf,buf );
+        //destBuf[0] = graphs[graphIndex].nodeMap[it->first];
+        lenBuf[0] = it->second;
+    
 
+
+        if ( ( sendLen = sendto(serverA_sockfd, &destBuf, sizeof(destBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to Server A from AWS");
+            exit(EXIT_FAILURE);
+        }
+    
+        if ( ( sendLen = sendto(serverA_sockfd, &lenBuf, sizeof(lenBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to Server A from AWS");
+            exit(EXIT_FAILURE);
+        }
+        
+    }
+    memset(buf, '\0', sizeof(buf));
+    // Send NULL char to signify end of communication
+    if ( ( sendLen = sendto(serverA_sockfd, &buf, sizeof(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+        perror("Error sending UDP message to Server A from AWS");
+        exit(EXIT_FAILURE);
+    }
+    
+
+    
+    cout << "The Server A has sent shortest paths to AWS." << endl;
+    
+    // Erase ordered pairs vector so it can be reused if there is another query
+    graphs[graphIndex].orderedDistPairs.erase(graphs[graphIndex].orderedDistPairs.begin(), graphs[graphIndex].orderedDistPairs.end());
+    
+}
 
 int main (){
 
@@ -397,7 +442,8 @@ int main (){
         //cout << testIndex << endl;
         //cout << graphs[(int)(size_t)recvMapID - 65].mapID << endl;
         graphs[graphIndex].dijkstra(atoi(recvVertexIndex));
-        
+        //send result back to aws
+        sendToAws(graphIndex);
         
     }
 //    read map
