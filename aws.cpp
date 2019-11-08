@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <vector>
 //#include "aws.h"
 using namespace std;
 
@@ -34,6 +35,7 @@ char mapID [BUFLEN];
 char vertexIndex[BUFLEN];
 char fileSize[BUFLEN];
 int recvLen1, sendLen;
+vector< pair <int, int> > shortestPathPairs;
 
 struct sockaddr_in awsAddrTCP, awsAddrUDP;
 int aws_TCP_sockfd, aws_UDP_sockfd;
@@ -61,7 +63,7 @@ void init_TCP(){
        
        // *** 2. BIND SOCKET ***
        
-       if (bind(aws_TCP_sockfd, (struct sockaddr *) &awsAddrTCP, sizeof(awsAddrTCP)) == -1 ){
+       if (::bind(aws_TCP_sockfd, (struct sockaddr *) &awsAddrTCP, sizeof(awsAddrTCP)) == -1 ){
            perror("Error binding TCP socket"); //error handling found @ geeksforgeeks.org
            exit(EXIT_FAILURE);
        }
@@ -88,7 +90,7 @@ void init_UDP(){
     
     // *** 2. BIND SOCKET ***
     
-    if (bind(aws_UDP_sockfd, (struct sockaddr *) &awsAddrUDP, sizeof(awsAddrUDP)) == -1 ){
+    if (::bind(aws_UDP_sockfd, (struct sockaddr *) &awsAddrUDP, sizeof(awsAddrUDP)) == -1 ){
         perror("Error binding UDP socket");
         exit(EXIT_FAILURE);
     }
@@ -171,6 +173,40 @@ void sendToA(){
     cout << "The AWS has sent map ID and starting vertex to server A using UDP over port " << SERVERAPORT << endl;
 }
 
+
+
+
+void recvFromA(){
+    char destBuf[BUFLEN];
+    char lenBuf[BUFLEN];
+    socklen_t serverALen = sizeof(serverAAddr);
+    memset(buf, '0', sizeof(buf));
+    while (buf[0] != '\0'){
+        
+        if ((recvLen1 = recvfrom(serverA_sockfd, buf, BUFLEN, 0, (struct sockaddr *) &serverAAddr, &serverALen )) < 0){
+            perror("Error receiving message from client");
+            exit(EXIT_FAILURE);
+        }
+        if (buf[0] != '\0'){
+            strcpy(destBuf,buf);
+            destBuf[recvLen1] = '\0';
+        }
+        if ((recvLen1 = recvfrom(serverA_sockfd, buf, BUFLEN, 0, (struct sockaddr *)&serverAAddr, &serverALen )) < 0){
+            perror("Error receiving message from client");
+            exit(EXIT_FAILURE);
+        }
+        if (buf[0] != '\0'){
+            strcpy(lenBuf,buf);
+            lenBuf[recvLen1] = '\0';
+            shortestPathPairs.push_back(make_pair(atoi(destBuf), atoi(lenBuf)) );
+        }
+        
+    } // end while
+    for (auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
+        cout << it->first << " " << it->second << endl;
+    }
+}
+
 int main (){
     
     
@@ -201,6 +237,8 @@ int main (){
         cout << "The AWS has received map ID " << mapID << ", start vertex " << vertexIndex << " and file size " << fileSize << " from the client using TCP over port " << TCPPORT << endl;
         
         sendToA();
+        recvFromA();
+        
         
     } // end of while(1)
     
