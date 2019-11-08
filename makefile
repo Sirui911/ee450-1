@@ -1,8 +1,8 @@
 all: 
-	g++ -o aws aws.cpp
-	g++ -o client client.cpp
-	g++ -o serverA serverA.cpp
-	g++ -o serverB serverB.cpp
+	g++ -std=c++11 aws.cpp -o aws
+	g++ -std=c++11 client.cpp -o client
+	g++ -std=c++11 serverA.cpp -o serverA
+	g++ -std=c++11 serverB.cpp -o serverB
 
 .PHONY: aws
 aws:
