@@ -55,7 +55,7 @@ void init_UDP(){
     
     // *** 2. BIND SOCKET ***
     
-    if (bind(serverB_sockfd, (struct sockaddr *) &serverBAddr, sizeof(serverBAddr)) == -1 ){
+    if (::bind(serverB_sockfd, (struct sockaddr *) &serverBAddr, sizeof(serverBAddr)) == -1 ){
         perror("Error binding UDP socket");
         exit(EXIT_FAILURE);
     }
