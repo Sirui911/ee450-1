@@ -17,19 +17,34 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <iomanip>
+#include <vector>
+
 //#include "serverB.h"
 using namespace std;
 
 #define LOCALIP "127.0.0.1" // IP Address of Host
 #define UDPPORT 23984 // UDP Port # backend servers connects to
 #define SERVERBPORT 22984
-#define BUFLEN 10 // Length of socket stream buffer
+#define BUFLEN 1000 // Length of socket stream buffer
 
 char buf [BUFLEN];
 char mapID [BUFLEN];
 char vertexIndex[BUFLEN];
-char fileSize[BUFLEN];
+char fileSizeBuf[BUFLEN];
 int recvLen1;
+int sendLen;
+char pSpeedBuf[BUFLEN]; // propagation speed
+char tSpeedBuf[BUFLEN]; // transmission speed
+double propSpeed; // in km/s
+double transSpeed; // in Bytes/s
+long fileSize;
+vector<double> propDelay;
+vector<double> transDelay;
+vector<double> totDelay;
+
+vector< pair <int, int> > shortestPathPairs;
+vector< pair <int, double> > totalDelayPairs;
 
 struct sockaddr_in awsAddrUDP;
 int aws_UDP_sockfd;
@@ -59,30 +74,176 @@ void init_UDP(){
         perror("Error binding UDP socket");
         exit(EXIT_FAILURE);
     }
+    
+    cout << "The Server B is up and running using UDP on port " << SERVERBPORT << "." << endl;
 }
 
+
 void recvFromAWS(){
+    char destBuf[BUFLEN];
+    char lenBuf[BUFLEN];
     socklen_t awsLen = sizeof(awsAddrUDP);
-//    recv map ID
-    if ((recvLen1 = recvfrom(serverB_sockfd, mapID, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen)) < 1){
-        perror("Error receiving from AWS");
+    memset(buf, '0', sizeof(buf));
+    int recvDone = 0; // 0 = not finished receiving, 1 = finished receiving
+    
+    
+    if ((recvLen1 = recvfrom(serverB_sockfd, fileSizeBuf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen )) < 0){
+        perror("Error receiving message from aws");
+        exit(EXIT_FAILURE);
+        
+    }
+    
+    fileSize = atol(fileSizeBuf);
+    
+    // Recv 1st propagation speed 2nd transmission speed
+    
+    if ((recvLen1 = recvfrom(serverB_sockfd, pSpeedBuf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen )) < 0){
+        perror("Error receiving message from aws");
         exit(EXIT_FAILURE);
     }
-        
-//    recv source vertex index
-    if ((recvLen1 = recvfrom(serverB_sockfd, vertexIndex, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen)) < 1){
-        perror("Error receiving from AWS");
+    pSpeedBuf[recvLen1] = '\0';
+    
+    propSpeed = atof(pSpeedBuf);
+    
+    if ((recvLen1 = recvfrom(serverB_sockfd, tSpeedBuf, BUFLEN, 0, (struct sockaddr *)&awsAddrUDP, &awsLen )) < 0){
+        perror("Error receiving message from aws");
         exit(EXIT_FAILURE);
     }
+    tSpeedBuf[recvLen1] = '\0';
+    
+    transSpeed = atof(tSpeedBuf);
+    
+    // receive edge data
+    while (!recvDone){
         
-    cout << "The Server A has received input for finding shortest paths: starting vertex " << vertexIndex << " of map " << mapID << "." << endl;
+        if ((recvLen1 = recvfrom(serverB_sockfd, destBuf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen )) < 0){
+            perror("Error receiving message from aws");
+            exit(EXIT_FAILURE);
+        }
+        destBuf[recvLen1] = '\0';
+        cout << "dest: " << destBuf << endl;
+        
+        // receive min length if destination received is valid
+        if (destBuf[0] != '\0'){
+            if ((recvLen1 = recvfrom(serverB_sockfd, lenBuf, BUFLEN, 0, (struct sockaddr *)&awsAddrUDP, &awsLen )) < 0){
+                perror("Error receiving message from aws");
+                exit(EXIT_FAILURE);
+            }
+            lenBuf[recvLen1] = '\0';
+            cout << "len: " << lenBuf << endl;
+            
+            shortestPathPairs.push_back(make_pair(atoi(destBuf), atoi(lenBuf)) );
+        }
+        else{
+            //toggle recvDone
+            recvDone = 1;
+        }
+        
+        cout << recvDone << endl;
+        
+    } // end while
+    
+    
+    cout << "The Server B has received data for calculation: "<< endl;
+    cout << fixed;
+    cout << "* Propagation speed: " << setprecision(2) << propSpeed << " km/s" << endl;;
+    cout << "* Transmission speed "<< setprecision(2) << transSpeed << " Bytes/s" << endl;
+    
+    for (auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
+        cout << "* Path length for destination " << it->first << ": " << it->second << endl;
+    }
+    
+    
 }
+
+
+void calcDelay(){
+    int i = 0;
+    for (auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
+        // prop delay
+        propDelay.push_back(it->second * propSpeed);
+        // trans delay
+        transDelay.push_back(fileSize * transSpeed);
+        // total delay
+        totDelay.push_back(propDelay[i] + transDelay[i]);
+        
+        totalDelayPairs.push_back(make_pair(it->first, totDelay[i]));
+        i++;
+    }
+    
+    cout << "The Server B has finished the calculation of the delays: " << endl;
+    cout << "------------------------" << endl << "Destination" << setw(10) << "Delay" << endl << "------------------------" << endl;
+    
+    for(auto it = totalDelayPairs.begin(); it != totalDelayPairs.end(); it++){
+        cout << it->first << setw(20) << it->second << endl;
+    }
+    
+}
+
+void sendToAWS(){
+    
+    // send delays
+    char propBuf[BUFLEN];
+    char transBuf[BUFLEN];
+    char totBuf[BUFLEN];
+    for(int i = 0; i < propDelay.size(); i++){
+        // send propagation delay
+        sprintf(propBuf, "%f", propDelay[i]);
+        if ((sendLen = sendto(serverB_sockfd, propBuf, strlen(propBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to AWS from Server B");
+            exit(EXIT_FAILURE);
+        }
+        memset(propBuf, '\0', sizeof(propBuf));
+        
+        // send transmission delay
+        sprintf(transBuf, "%f", transDelay[i]);
+        if ((sendLen = sendto(serverB_sockfd, transBuf, strlen(transBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to AWS from Server B");
+            exit(EXIT_FAILURE);
+        }
+        
+        memset(transBuf, '\0', sizeof(transBuf));
+        
+        // send total delay
+        sprintf(totBuf, "%f", totDelay[i]);
+        if ((sendLen = sendto(serverB_sockfd, totBuf, strlen(totBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to AWS from Server B");
+            exit(EXIT_FAILURE);
+        }
+        memset(totBuf, '\0', sizeof(totBuf));
+    }
+    memset(buf, '\0', sizeof(buf));
+    // Send NULL char to signify end of communication
+    if ( ( sendLen = sendto(serverB_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+        perror("Error sending UDP message to AWS from Server B");
+        exit(EXIT_FAILURE);
+    }
+    
+    
+    
+    
+    cout << "The Server B has finished sending the output to AWS" << endl;
+}
+
 
 int main(){
     
+    
     init_UDP();
     
-    recvFromAWS();
-    
+    while(1){
+        
+        recvFromAWS();
+        calcDelay();
+        sendToAWS();
+        
+        
+        // erase path data
+        shortestPathPairs.clear();
+        propDelay.clear();
+        transDelay.clear();
+        totDelay.clear();
+        totalDelayPairs.clear();
+    }
     return 0;
 }

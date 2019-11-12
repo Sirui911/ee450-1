@@ -22,14 +22,15 @@
 #include <algorithm>
 #include <iomanip>
 #include <map>
-#include <limits>
+#include <climits>
+
 //#include "serverA.h"
 using namespace std;
 
 #define LOCALIP "127.0.0.1" // IP Address of Host
 #define UDPPORT 23984 // UDP Port # backend servers connects to
 #define SERVERAPORT 21984
-#define BUFLEN 10 // Length of socket stream buffer
+#define BUFLEN 1000 // Length of socket stream buffer
 
 char buf [BUFLEN];
 char recvMapID [BUFLEN];
@@ -382,30 +383,52 @@ void sendToAws(int graphIndex){
     char destBuf[BUFLEN];
     char lenBuf[BUFLEN];
     int sendLen;
+    
+    sprintf(buf,"%f",graphs[graphIndex].propSpeed);
+    
+    // send prop speed to AWS
+    if ( ( sendLen = sendto(serverA_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+        perror("Error sending UDP message to Server A from AWS");
+        exit(EXIT_FAILURE);
+    }
+    
+    sprintf(buf,"%f",graphs[graphIndex].transSpeed);
+    
+    // send trans speed to AWS
+    if ( ( sendLen = sendto(serverA_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+        perror("Error sending UDP message to Server A from AWS");
+        exit(EXIT_FAILURE);
+    }
+    
+    memset(buf, '\0', sizeof(buf));
     // send destination and min length to AWS
     for ( auto it = graphs[graphIndex].orderedDistPairs.begin(); it != graphs[graphIndex].orderedDistPairs.end(); it++){
         
-        *buf = (char)graphs[graphIndex].nodeMap[it->first];
-        strcpy(destBuf,buf );
-        //destBuf[0] = graphs[graphIndex].nodeMap[it->first];
-        lenBuf[0] = it->second;
-    
 
-
-        if ( ( sendLen = sendto(serverA_sockfd, &destBuf, sizeof(destBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-            perror("Error sending UDP message to Server A from AWS");
-            exit(EXIT_FAILURE);
-        }
-    
-        if ( ( sendLen = sendto(serverA_sockfd, &lenBuf, sizeof(lenBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-            perror("Error sending UDP message to Server A from AWS");
-            exit(EXIT_FAILURE);
-        }
         
+        // store destination node in buffer to send
+        sprintf(destBuf,"%d",it->first);
+        // store min length in buffer to send
+        sprintf(lenBuf,"%d",it->second);
+    
+
+
+        if ( ( sendLen = sendto(serverA_sockfd, destBuf, strlen(destBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to Server A from AWS");
+            exit(EXIT_FAILURE);
+        }
+        // erase destBuf
+        memset(destBuf, '\0', sizeof(destBuf));
+        if ( ( sendLen = sendto(serverA_sockfd, lenBuf, strlen(lenBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to Server A from AWS");
+            exit(EXIT_FAILURE);
+        }
+        // erase lenBuf
+        memset(lenBuf, '\0', sizeof(lenBuf));
     }
     memset(buf, '\0', sizeof(buf));
     // Send NULL char to signify end of communication
-    if ( ( sendLen = sendto(serverA_sockfd, &buf, sizeof(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+    if ( ( sendLen = sendto(serverA_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server A from AWS");
         exit(EXIT_FAILURE);
     }
@@ -446,7 +469,7 @@ int main (){
         sendToAws(graphIndex);
         
     }
-//    read map
+
     
     
     
