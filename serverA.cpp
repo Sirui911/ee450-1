@@ -39,7 +39,6 @@ char recvFileSize[BUFLEN];
 int recvLen1;
 
 struct sockaddr_in awsAddrUDP;
-int aws_UDP_sockfd;
 
 struct sockaddr_in serverAAddr;
 int serverA_sockfd;
@@ -84,6 +83,7 @@ void init_UDP(){
     // *** 2. BIND SOCKET ***
     
     if (::bind(serverA_sockfd, (struct sockaddr *) &serverAAddr, sizeof(serverAAddr)) == -1 ){
+        close(serverA_sockfd);
         perror("Error binding UDP socket");
         exit(EXIT_FAILURE);
     }
@@ -284,7 +284,8 @@ void recvFromAWS(){
 // the set of vertices not yet included in shortest path tree
 int graph::minDistance(int dist[], bool spt[]){
     // Initialize min value
-    int min = INT_MAX, min_index;
+    int min = INT_MAX;
+    int min_index;
   
     for (int v = 0; v < numVert; v++){
         if (spt[v] == false && dist[v] <= min){
@@ -320,6 +321,7 @@ void graph::dijkstra(int source){
        // path tree or shortest distance from src to i is finalized
      
        // Initialize all distances as INFINITE and spt[] as false
+//    INT_MAX ~= INF
     for (int i = 0; i < numVert; i++){
            dist[i] = INT_MAX;
            spt[i] = false;
@@ -337,7 +339,7 @@ void graph::dijkstra(int source){
         exit(EXIT_FAILURE);
     }
         
-        // Distance of source vertex from itself is always 0
+        // set source distance to 0 - not considered in output
        dist[sourceKey] = 0;
      
        // Find shortest path for all vertices
@@ -352,17 +354,18 @@ void graph::dijkstra(int source){
            // Update dist value of the adjacent vertices of the picked vertex.
            for (int node2 = 0; node2 < numVert; node2++){
      
-               // Update dist[v] only if is not in spt, there is an edge from
+               // Update dist[node2] only if is not in spt, there is an edge from
                // node1 to node2, and total weight of path from src to node2 through node1 is
                // smaller than current value of dist[node2]
                if (!spt[node2] && adjmat[node1][node2] && dist[node1] != INT_MAX && dist[node1] + adjmat[node1][node2] < dist[node2]){
+                   
                    dist[node2] = dist[node1] + adjmat[node1][node2];
                }
            }
        }
      
 
-    // add shortest path elements in pair to reorder by distance
+    // add shortest path elements in pair to reorder by ascending distance
     for (int i = 0; i < numVert; i++){
         orderedDistPairs.push_back( make_pair(i ,dist[i]) );
     }
@@ -371,6 +374,8 @@ void graph::dijkstra(int source){
     std::sort(orderedDistPairs.begin(), orderedDistPairs.end(), [](const std::pair<int,int> &left, const std::pair<int,int> &right) {
         return left.second < right.second;
     });
+    
+    // erase source node from list
     orderedDistPairs.erase(orderedDistPairs.begin());
     
        // print shortest path
@@ -388,7 +393,7 @@ void sendToAws(int graphIndex){
     
     // send prop speed to AWS
     if ( ( sendLen = sendto(serverA_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-        perror("Error sending UDP message to Server A from AWS");
+        perror("Error sending UDP message to AWS from Server A");
         exit(EXIT_FAILURE);
     }
     
@@ -396,7 +401,7 @@ void sendToAws(int graphIndex){
     
     // send trans speed to AWS
     if ( ( sendLen = sendto(serverA_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-        perror("Error sending UDP message to Server A from AWS");
+        perror("Error sending UDP message to AWS from Server A");
         exit(EXIT_FAILURE);
     }
     
@@ -407,20 +412,20 @@ void sendToAws(int graphIndex){
 
         
         // store destination node in buffer to send
-        sprintf(destBuf,"%d",it->first);
+        sprintf(destBuf,"%d",graphs[graphIndex].nodeMap[it->first]);
         // store min length in buffer to send
         sprintf(lenBuf,"%d",it->second);
     
 
 
         if ( ( sendLen = sendto(serverA_sockfd, destBuf, strlen(destBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-            perror("Error sending UDP message to Server A from AWS");
+            perror("Error sending UDP message to AWS from Server A");
             exit(EXIT_FAILURE);
         }
         // erase destBuf
         memset(destBuf, '\0', sizeof(destBuf));
         if ( ( sendLen = sendto(serverA_sockfd, lenBuf, strlen(lenBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-            perror("Error sending UDP message to Server A from AWS");
+            perror("Error sending UDP message to AWS from Server A");
             exit(EXIT_FAILURE);
         }
         // erase lenBuf
@@ -429,7 +434,7 @@ void sendToAws(int graphIndex){
     memset(buf, '\0', sizeof(buf));
     // Send NULL char to signify end of communication
     if ( ( sendLen = sendto(serverA_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-        perror("Error sending UDP message to Server A from AWS");
+        perror("Error sending UDP message to AWS from Server A");
         exit(EXIT_FAILURE);
     }
     
@@ -438,8 +443,7 @@ void sendToAws(int graphIndex){
     cout << "The Server A has sent shortest paths to AWS." << endl;
     
     // Erase ordered pairs vector so it can be reused if there is another query
-    graphs[graphIndex].orderedDistPairs.erase(graphs[graphIndex].orderedDistPairs.begin(), graphs[graphIndex].orderedDistPairs.end());
-    
+    graphs[graphIndex].orderedDistPairs.clear();
 }
 
 int main (){

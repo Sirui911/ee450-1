@@ -40,14 +40,13 @@ double propSpeed; // in km/s
 double transSpeed; // in Bytes/s
 long fileSize;
 vector<double> propDelay;
-vector<double> transDelay;
+double transDelay;
 vector<double> totDelay;
 
 vector< pair <int, int> > shortestPathPairs;
 vector< pair <int, double> > totalDelayPairs;
 
 struct sockaddr_in awsAddrUDP;
-int aws_UDP_sockfd;
 
 struct sockaddr_in serverBAddr;
 int serverB_sockfd;
@@ -71,6 +70,7 @@ void init_UDP(){
     // *** 2. BIND SOCKET ***
     
     if (::bind(serverB_sockfd, (struct sockaddr *) &serverBAddr, sizeof(serverBAddr)) == -1 ){
+        close(serverB_sockfd);
         perror("Error binding UDP socket");
         exit(EXIT_FAILURE);
     }
@@ -121,7 +121,7 @@ void recvFromAWS(){
             exit(EXIT_FAILURE);
         }
         destBuf[recvLen1] = '\0';
-        cout << "dest: " << destBuf << endl;
+//        cout << "dest: " << destBuf << endl;
         
         // receive min length if destination received is valid
         if (destBuf[0] != '\0'){
@@ -130,7 +130,7 @@ void recvFromAWS(){
                 exit(EXIT_FAILURE);
             }
             lenBuf[recvLen1] = '\0';
-            cout << "len: " << lenBuf << endl;
+//            cout << "len: " << lenBuf << endl;
             
             shortestPathPairs.push_back(make_pair(atoi(destBuf), atoi(lenBuf)) );
         }
@@ -139,7 +139,7 @@ void recvFromAWS(){
             recvDone = 1;
         }
         
-        cout << recvDone << endl;
+//        cout << recvDone << endl;
         
     } // end while
     
@@ -159,13 +159,14 @@ void recvFromAWS(){
 
 void calcDelay(){
     int i = 0;
+    // trans delay
+    transDelay = fileSize * transSpeed;
     for (auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
         // prop delay
         propDelay.push_back(it->second * propSpeed);
-        // trans delay
-        transDelay.push_back(fileSize * transSpeed);
+        
         // total delay
-        totDelay.push_back(propDelay[i] + transDelay[i]);
+        totDelay.push_back(propDelay[i] + transDelay);
         
         totalDelayPairs.push_back(make_pair(it->first, totDelay[i]));
         i++;
@@ -186,6 +187,16 @@ void sendToAWS(){
     char propBuf[BUFLEN];
     char transBuf[BUFLEN];
     char totBuf[BUFLEN];
+    
+    // send transmission delay
+    sprintf(transBuf, "%f", transDelay);
+    if ((sendLen = sendto(serverB_sockfd, transBuf, strlen(transBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+        perror("Error sending UDP message to AWS from Server B");
+        exit(EXIT_FAILURE);
+    }
+    
+    memset(transBuf, '\0', sizeof(transBuf));
+    
     for(int i = 0; i < propDelay.size(); i++){
         // send propagation delay
         sprintf(propBuf, "%f", propDelay[i]);
@@ -195,14 +206,6 @@ void sendToAWS(){
         }
         memset(propBuf, '\0', sizeof(propBuf));
         
-        // send transmission delay
-        sprintf(transBuf, "%f", transDelay[i]);
-        if ((sendLen = sendto(serverB_sockfd, transBuf, strlen(transBuf), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
-            perror("Error sending UDP message to AWS from Server B");
-            exit(EXIT_FAILURE);
-        }
-        
-        memset(transBuf, '\0', sizeof(transBuf));
         
         // send total delay
         sprintf(totBuf, "%f", totDelay[i]);
@@ -241,7 +244,6 @@ int main(){
         // erase path data
         shortestPathPairs.clear();
         propDelay.clear();
-        transDelay.clear();
         totDelay.clear();
         totalDelayPairs.clear();
     }
