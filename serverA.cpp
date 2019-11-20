@@ -51,15 +51,15 @@ struct graph{
     int numVert; // number of vertices in Map
     int numEdge; // number of edges in Map
     vector<vector<int> > adjmat;
-    map<int,int> nodeMap;
+    map<int,int> nodeMap; // (continuous index 1,2,..n , actual node index) (Key, Value)
     vector<int> node1;
     vector<int> node2;
     vector<int> edge; // distance in Km
-    vector< pair <int, int> > orderedDistPairs;
+    vector< pair <int, int> > shortestPathPairs; // (node, distance (km)) in ascending distance order
     
     void dijkstra(int source);
     int minDistance(int dist[], bool spt[]);
-    void printDijkstra(vector< pair <int, int> > orderedDistPairs);
+    void printDijkstra(vector< pair <int, int> > shortestPathPairs);
 };
 // vector of struct graph to hold all possibile mapIDs
 vector<graph> graphs;
@@ -298,13 +298,13 @@ int graph::minDistance(int dist[], bool spt[]){
 }
 
 // A utility function to print the constructed distance array
-void graph::printDijkstra(vector< pair <int, int> > orderedDistPairs)
+void graph::printDijkstra(vector< pair <int, int> > shortestPathPairs)
 {
     
     cout << "The Server A has identified the following shortest paths:" << endl;
     cout << "-----------------------------\nDestination\t\t" << "Min Length\n-----------------------------" << endl;
     
-    for ( auto it = orderedDistPairs.begin(); it != orderedDistPairs.end(); it++){
+    for ( auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
         cout << nodeMap[it->first] << setw(20) << it->second << endl;
     }
     cout << "-----------------------------" << endl;
@@ -368,19 +368,21 @@ void graph::dijkstra(int source){
     
     // add shortest path elements in pair to reorder by ascending distance
     for (int i = 0; i < numVert; i++){
-        orderedDistPairs.push_back( make_pair(i ,dist[i]) );
+        shortestPathPairs.push_back( make_pair(i ,dist[i]) );
     }
     
+    /*
     //lambda funct for sorting pairs by distance instead of vertex
-    std::sort(orderedDistPairs.begin(), orderedDistPairs.end(), [](const std::pair<int,int> &left, const std::pair<int,int> &right) {
+    std::sort(shortestPathPairs.begin(), shortestPathPairs.end(), [](const std::pair<int,int> &left, const std::pair<int,int> &right) {
         return left.second < right.second;
     });
+    */
     
     // erase source node from list
-    orderedDistPairs.erase(orderedDistPairs.begin());
+    shortestPathPairs.erase(shortestPathPairs.begin() + sourceKey);
     
     // print shortest path
-    printDijkstra(orderedDistPairs);
+    printDijkstra(shortestPathPairs);
 }
 
 // send shortest paths
@@ -408,7 +410,7 @@ void sendToAws(int graphIndex){
     
     memset(buf, '\0', sizeof(buf));
     // send destination and min length to AWS
-    for ( auto it = graphs[graphIndex].orderedDistPairs.begin(); it != graphs[graphIndex].orderedDistPairs.end(); it++){
+    for ( auto it = graphs[graphIndex].shortestPathPairs.begin(); it != graphs[graphIndex].shortestPathPairs.end(); it++){
         
         
         
@@ -444,7 +446,7 @@ void sendToAws(int graphIndex){
     cout << "The Server A has sent shortest paths to AWS." << endl;
     
     // Erase ordered pairs vector so it can be reused if there is another query
-    graphs[graphIndex].orderedDistPairs.clear();
+    graphs[graphIndex].shortestPathPairs.clear();
 }
 
 int main (){
