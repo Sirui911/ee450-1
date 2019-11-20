@@ -35,10 +35,10 @@ int aws_TCP_sockfd;
 struct sockaddr_in clientAddr;
 int client_sockfd;
 
-vector< pair <int, int> > shortestPathPairs;
-vector<double> propDelay;
-double transDelay;
-vector<double> totDelay;
+vector< pair <int, int> > shortestPathPairs; // (node, distance (km)) in ascending distance order
+vector<double> propDelay; // seconds
+double transDelay; // seconds
+vector<double> totDelay; // seconds
 
 
 
@@ -248,7 +248,7 @@ int main(int argc, const char * argv[]) {
     //    strcpy(vertexIndex,argv[2]);
     sprintf(vertexIndex,"%s",argv[2]);
     
-    char fileSize[BUFLEN];
+    char fileSize[BUFLEN]; // in bits
     //    strcpy(fileSize,argv[3]);
     sprintf(fileSize,"%s",argv[3]);
     

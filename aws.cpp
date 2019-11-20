@@ -38,7 +38,7 @@ char mapID [BUFLEN];
 char vertexIndex[BUFLEN];
 char fileSize[BUFLEN];
 int recvLen1, sendLen;
-vector< pair <int, int> > shortestPathPairs;
+vector< pair <int, int> > shortestPathPairs; // (node, distance (km)) in ascending distance order
 double propSpeed; // in km/s
 double transSpeed; // in Bytes/s
 vector<double> propDelay;

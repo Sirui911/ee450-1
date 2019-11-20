@@ -31,7 +31,7 @@ using namespace std;
 char buf [BUFLEN];
 char mapID [BUFLEN];
 char vertexIndex[BUFLEN];
-char fileSizeBuf[BUFLEN];
+char fileSizeBuf[BUFLEN]; // in bits
 int recvLen1;
 int sendLen;
 char pSpeedBuf[BUFLEN]; // propagation speed
@@ -43,8 +43,8 @@ vector<double> propDelay;
 double transDelay;
 vector<double> totDelay;
 
-vector< pair <int, int> > shortestPathPairs;
-vector< pair <int, double> > totalDelayPairs;
+vector< pair <int, int> > shortestPathPairs; // (node, distance (km)) in ascending distance order
+vector< pair <int, double> > totalDelayPairs; // (node, delay (sec)) in ascending delay order
 
 struct sockaddr_in awsAddrUDP;
 
@@ -159,13 +159,14 @@ void recvFromAWS(){
 
 void calcDelay(){
     int i = 0;
-    // trans delay
-    transDelay = fileSize * transSpeed;
+    // convert file size in bits to bytes
+    // trans delay (same for all nodes) (seconds)
+    transDelay = fileSize / (8 * transSpeed);
     for (auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
-        // prop delay
-        propDelay.push_back(it->second * propSpeed);
+        // prop delay =  (distance / propagation speed) (seconds)
+        propDelay.push_back(it->second / propSpeed);
         
-        // total delay
+        // total delay (transmission delay + propagation delay)
         totDelay.push_back(propDelay[i] + transDelay);
         
         totalDelayPairs.push_back(make_pair(it->first, totDelay[i]));
