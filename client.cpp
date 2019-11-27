@@ -278,17 +278,17 @@ int main(int argc, const char * argv[]) {
     
      
      cout << "The client has received results from AWS:" << endl;
-     cout << "----------------------------------------------" << endl;
-     cout << "Destination" <<setw(15) << "Min Length" << setw(20) << "Tt" << setw(20) << "Tp" << setw(20) << "Delay" << endl;
-    cout << "----------------------------------------------" << endl;
+     cout << "---------------------------------------------------------------------------------------------------" << endl;
+     cout << left << setw(15) <<"Destination" <<setw(15) << "Min Length" << setw(20) << "Tt" << setw(20) << "Tp" << setw(20) << "Delay" << endl;
+    cout << "---------------------------------------------------------------------------------------------------" << endl;
     
     cout << fixed << setprecision(2);
     
     for (int i = 0; i < shortestPathPairs.size(); i++){
-        cout << shortestPathPairs[i].first << setw(20) << shortestPathPairs[i].second << setw(20) << transDelay << setw(20) << propDelay[i] << setw(20) << totDelay[i] << endl;
+        cout << left << setw(15) << shortestPathPairs[i].first << setw(15) << shortestPathPairs[i].second << setw(20) << transDelay << setw(20) << propDelay[i] << setw(20) << totDelay[i] << endl;
     }
     
-    cout << "----------------------------------------------" << endl;
+    cout << "---------------------------------------------------------------------------------------------------" << endl;
      
     
     // *** CLOSE CONNECTION ***

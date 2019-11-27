@@ -84,6 +84,7 @@ void recvFromAWS(){
     char lenBuf[BUFLEN];
     socklen_t awsLen = sizeof(awsAddrUDP);
     memset(buf, '0', sizeof(buf));
+    memset(fileSizeBuf, '\0' , sizeof(fileSizeBuf));
     int recvDone = 0; // 0 = not finished receiving, 1 = finished receiving
     
     
@@ -96,15 +97,15 @@ void recvFromAWS(){
     fileSize = atol(fileSizeBuf);
     
     // Recv 1st propagation speed 2nd transmission speed
-    
+    memset(pSpeedBuf, '\0' , sizeof(pSpeedBuf));
     if ((recvLen1 = recvfrom(serverB_sockfd, pSpeedBuf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen )) < 0){
         perror("Error receiving message from aws");
         exit(EXIT_FAILURE);
     }
     pSpeedBuf[recvLen1] = '\0';
-    
     propSpeed = atof(pSpeedBuf);
     
+    memset(tSpeedBuf, '\0' , sizeof(tSpeedBuf));
     if ((recvLen1 = recvfrom(serverB_sockfd, tSpeedBuf, BUFLEN, 0, (struct sockaddr *)&awsAddrUDP, &awsLen )) < 0){
         perror("Error receiving message from aws");
         exit(EXIT_FAILURE);
@@ -114,6 +115,8 @@ void recvFromAWS(){
     transSpeed = atof(tSpeedBuf);
     
     // receive edge data
+    memset(destBuf, '\0' , sizeof(destBuf));
+    memset(lenBuf, '\0' , sizeof(lenBuf));
     while (!recvDone){
         
         if ((recvLen1 = recvfrom(serverB_sockfd, destBuf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen )) < 0){
@@ -174,12 +177,12 @@ void calcDelay(){
     }
     
     cout << "The Server B has finished the calculation of the delays: " << endl;
-    cout << "------------------------" << endl << "Destination" << setw(10) << "Delay" << endl << "------------------------" << endl;
+    cout << "-------------------------------------" << endl << left << setw(20) << "Destination" << "Delay" << endl << "-------------------------------------" << endl;
     
     for(auto it = totalDelayPairs.begin(); it != totalDelayPairs.end(); it++){
-        cout << it->first << setw(20) << it->second << endl;
+        cout << left << setw(20) << it->first << setw(20) << it->second << endl;
     }
-    
+    cout << "-------------------------------------" << endl;
 }
 
 void sendToAWS(){

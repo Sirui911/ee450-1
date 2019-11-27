@@ -302,12 +302,12 @@ void graph::printDijkstra(vector< pair <int, int> > shortestPathPairs)
 {
     
     cout << "The Server A has identified the following shortest paths:" << endl;
-    cout << "-----------------------------\nDestination\t\t" << "Min Length\n-----------------------------" << endl;
+    cout << "-----------------------------------\n" << left << setw(20) << "Destination" << "Min Length\n-----------------------------------" << endl;
     
     for ( auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
-        cout << nodeMap[it->first] << setw(20) << it->second << endl;
+        cout << left << setw(20) << nodeMap[it->first] << it->second << endl;
     }
-    cout << "-----------------------------" << endl;
+    cout << "-----------------------------------" << endl;
 }
 
 

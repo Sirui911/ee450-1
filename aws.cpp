@@ -266,15 +266,15 @@ void recvFromA(){
     
     
 
-    cout << "The AWS has received shortest path from server A: " << endl << "-----------------------------" << endl << "Destination" << setw(20) << "Min Length" << endl << "-----------------------------" << endl;
+    cout << "The AWS has received shortest path from server A: " << endl << "--------------------------------" << endl << left << setw(20) << "Destination" << "Min Length" << endl << "--------------------------------" << endl;
     
 
 
 
     for (auto it = shortestPathPairs.begin(); it != shortestPathPairs.end(); it++){
-        cout << it->first << setw(20) << it->second << endl;
+        cout << setw(20) << it->first << it->second << endl;
     }
-    cout << "-----------------------------" << endl;
+    cout << "--------------------------------" << endl;
 }
 
 // Sends propspeed, transspeed, and Dijkstra result to Server B via UDP
@@ -289,9 +289,10 @@ void sendToB(){
           exit(EXIT_FAILURE);
       }
     
+    memset(fileSize, '\0' , sizeof(fileSize));
+    
     // send prop speed
     sprintf(buf, "%f", propSpeed);
-    
     if ((sendLen = sendto(aws_UDP_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server B from AWS");
         exit(EXIT_FAILURE);
@@ -397,14 +398,18 @@ void recvFromB(){
     int sizetot = to_string(totDelay[totDelay.size()-1]).length();
     
     cout << "The AWS has received delays from server B:" << endl;
-    cout << "--------------------------------------------" << endl << "Destination" << setw(sizet) << "Tt" << setw(sizep) << "Tp" << setw(sizetot) << "Delay" << endl << "--------------------------------------------" << endl;
+//    cout << "--------------------------------------------" << endl << "Destination" << setw(sizet) << "Tt" << setw(sizep) << "Tp" << setw(sizetot) << "Delay" << endl << "--------------------------------------------" << endl;
+    cout << "-----------------------------------------------------------------------------" << endl << left << setw(20) << "Destination" << setw(20) << "Tt" << setw(20) << "Tp" << setw(20) << "Delay" << endl << "-----------------------------------------------------------------------------" << endl;
     cout << fixed;
     
     
     for(int i = 0; i < shortestPathPairs.size(); i++){
-        cout << shortestPathPairs[i].first << setw(30) << setprecision(2) << transDelay << setw(sizep) << propDelay[i] << setw(sizetot) << totDelay[i] << endl;
+//        cout << shortestPathPairs[i].first << setw(30) << setprecision(2) << transDelay << setw(sizep) << propDelay[i] << setw(sizetot) << totDelay[i] << endl;
+        cout << left << setw(20) << shortestPathPairs[i].first << setw(20) << setprecision(2) << transDelay << setw(20) << propDelay[i] << setw(20) <<  totDelay[i] << endl;
     }
 
+    cout << "-----------------------------------------------------------------------------" << endl;
+    
 }
 
 void sendToClient(){
@@ -524,7 +529,8 @@ int main (){
         shortestPathPairs.clear();
         propDelay.clear();
         totDelay.clear();
-        // close client socket
+        transDelay = 0;
+        // close client child socket
         close(new_aws_TCP_sockfd);
     } // end of while(1)
     
