@@ -244,18 +244,28 @@ int main(int argc, const char * argv[]) {
     
     /* ADD VALID INPUT CHECKING */
     
+    //argv[1] = map id
+    //argv[2] = source node
+    //argv[3] = file size
     
-    
+    // check for correct format
     if (argc != 4){
         cout << "Please input in the following format: " << endl << "'./client <Map ID> <Source Vertex Index> <File Size>'" << endl;
         exit(EXIT_FAILURE);
     }
+    // check if map ID is letter
     if (!isalpha(*argv[1])){
         cout << "Map ID must be a letter" << endl;
         exit(EXIT_FAILURE);
     }
+    // check if source and file are numbers
     if (!(isdigit(*argv[2]) && isdigit(*argv[3]))){
         cout << "Source vertex index and file size must be numerical digits" << endl;
+        exit(EXIT_FAILURE);
+    }
+    // check if file size is in range that can be handled (long long)
+    if(argv[3] > 9223372036854775807){
+        cout << "File size must fit in long long (0 - 9223372036854775807)"
         exit(EXIT_FAILURE);
     }
     
