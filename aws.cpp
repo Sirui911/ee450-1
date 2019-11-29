@@ -68,7 +68,7 @@ void init_TCP(){
        
        if (::bind(aws_TCP_sockfd, (struct sockaddr *) &awsAddrTCP, sizeof(awsAddrTCP)) == -1 ){
            close(aws_TCP_sockfd);
-           perror("Error binding TCP socket"); //error handling found @ geeksforgeeks.org
+           perror("Error binding TCP socket");
            exit(EXIT_FAILURE);
        }
     // *** 3. LISTEN FOR CONNECTIONS ***
@@ -118,6 +118,7 @@ void recvFromClient(){
     recvLen1 = recv(new_aws_TCP_sockfd, mapID, BUFLEN, 0);
     if (recvLen1 == -1){
         perror("Error receiving message from client");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     mapID[recvLen1] = '\0';
@@ -126,6 +127,7 @@ void recvFromClient(){
     recvLen1 = recv(new_aws_TCP_sockfd, vertexIndex, BUFLEN, 0);
     if (recvLen1 == -1){
         perror("Error receiving message from client");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     vertexIndex[recvLen1] = '\0';
@@ -133,6 +135,7 @@ void recvFromClient(){
     recvLen1 = recv(new_aws_TCP_sockfd, fileSize, BUFLEN, 0);
     if (recvLen1 == -1){
         perror("Error receiving message from client");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     fileSize[recvLen1] = '\0';
@@ -148,6 +151,8 @@ void recvFromClient(){
 //    cout << buf << endl;
 }
 
+// not used
+/*
 void separateClientBuffer(){
     //      Separate buffer from client into mapID, vertexIndex, and fileSize
     memset(mapID, '\0' , sizeof(mapID));
@@ -173,7 +178,8 @@ void separateClientBuffer(){
     vertexIndex[strlen(vertexIndex)] = '\0';
     fileSize[strlen(fileSize)] = '\0';
 }
-
+*/
+ 
 // Sets port and IP of serverA and serverB
 void setServerAB(){
 //    Server A
@@ -196,10 +202,12 @@ void sendToA(){
     
     if ((sendLen = sendto(aws_UDP_sockfd, mapID, strlen(mapID), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server A from AWS");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     if ((sendLen = sendto(aws_UDP_sockfd, vertexIndex, strlen(vertexIndex), 0, (struct sockaddr *) &serverAAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server A from AWS");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     
@@ -217,17 +225,40 @@ void recvFromA(){
     // recv prop speed
     
     if ((recvLen1 = recvfrom(aws_UDP_sockfd, buf, BUFLEN, 0, (struct sockaddr *) &serverAAddr, &serverALen )) < 0){
-        perror("Error receiving message from client");
+        perror("Error receiving message from Server A");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     buf[recvLen1] = '\0';
+    
+    // if buf == -2 then the map or source node is incorrect and AWS should abort
+    if (atoi(buf) == -2){
+        cerr << "Received error from Server A: Map or source node invalid\n";
+        // send error to Server B to terminate process
+        int sendLen;
+        if ((sendLen = sendto(aws_UDP_sockfd, "-2", strlen("-2"), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to Server B from AWS");
+            close(new_aws_TCP_sockfd);
+            exit(EXIT_FAILURE);
+        }
+        // send error to client to terminate process
+        if (send(new_aws_TCP_sockfd, "-2", strlen("-2"), 0) == -1){
+            perror("Error sending data to client");
+            close(new_aws_TCP_sockfd);
+            exit(EXIT_FAILURE);
+        }
+        
+        exit(EXIT_FAILURE);
+    }
+    
     propSpeed = atof(buf);
 //    cout << "DEBUG: " << propSpeed << endl;
     
     //  recv trans speed
     if ((recvLen1 = recvfrom(aws_UDP_sockfd, buf, BUFLEN, 0, (struct sockaddr *) &serverAAddr, &serverALen )) < 0){
-           perror("Error receiving message from client");
-           exit(EXIT_FAILURE);
+        perror("Error receiving message from Server A");
+        close(new_aws_TCP_sockfd);
+        exit(EXIT_FAILURE);
        }
     buf[recvLen1] = '\0';
     transSpeed = atof(buf);
@@ -238,7 +269,8 @@ void recvFromA(){
     while (!recvDone){
         
         if ((recvLen1 = recvfrom(aws_UDP_sockfd, destBuf, BUFLEN, 0, (struct sockaddr *) &serverAAddr, &serverALen )) < 0){
-            perror("Error receiving message from client");
+            perror("Error receiving message from Server A");
+            close(new_aws_TCP_sockfd);
             exit(EXIT_FAILURE);
         }
         destBuf[recvLen1] = '\0';
@@ -247,7 +279,8 @@ void recvFromA(){
         // receive min length if destination received is valid
         if (destBuf[0] != '\0'){
             if ((recvLen1 = recvfrom(aws_UDP_sockfd, lenBuf, BUFLEN, 0, (struct sockaddr *)&serverAAddr, &serverALen )) < 0){
-                perror("Error receiving message from client");
+                perror("Error receiving message from Server A");
+                close(new_aws_TCP_sockfd);
                 exit(EXIT_FAILURE);
             }
             lenBuf[recvLen1] = '\0';
@@ -285,8 +318,9 @@ void sendToB(){
     // send file size
     
     if ((sendLen = sendto(aws_UDP_sockfd, fileSize, strlen(fileSize), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
-          perror("Error sending UDP message to Server B from AWS");
-          exit(EXIT_FAILURE);
+        perror("Error sending UDP message to Server B from AWS");
+        close(new_aws_TCP_sockfd);
+        exit(EXIT_FAILURE);
       }
     
     memset(fileSize, '\0' , sizeof(fileSize));
@@ -295,6 +329,7 @@ void sendToB(){
     sprintf(buf, "%f", propSpeed);
     if ((sendLen = sendto(aws_UDP_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server B from AWS");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     
@@ -302,6 +337,7 @@ void sendToB(){
      sprintf(buf, "%f", transSpeed);
     if ((sendLen = sendto(aws_UDP_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server B from AWS");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     
@@ -312,6 +348,7 @@ void sendToB(){
         sprintf(destBuf, "%d", it->first);
         if ((sendLen = sendto(aws_UDP_sockfd, destBuf, strlen(destBuf), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
             perror("Error sending UDP message to Server B from AWS");
+            close(new_aws_TCP_sockfd);
             exit(EXIT_FAILURE);
         }
         memset(destBuf, '\0', sizeof(lenBuf));
@@ -320,6 +357,7 @@ void sendToB(){
         sprintf(lenBuf, "%d", it->second);
         if ((sendLen = sendto(aws_UDP_sockfd, lenBuf, strlen(lenBuf), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
             perror("Error sending UDP message to Server B from AWS");
+            close(new_aws_TCP_sockfd);
             exit(EXIT_FAILURE);
         }
      
@@ -329,6 +367,7 @@ void sendToB(){
     // Send NULL char to signify end of communication
     if ( ( sendLen = sendto(aws_UDP_sockfd, buf, strlen(buf), 0, (struct sockaddr *) &serverBAddr, sizeof(struct sockaddr_in))) == -1) {
         perror("Error sending UDP message to Server B from AWS");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     
@@ -347,10 +386,28 @@ void recvFromB(){
     
     //receive transmission delay once
     if ((recvLen1 = recvfrom(aws_UDP_sockfd, transBuf, BUFLEN, 0, (struct sockaddr *)&serverBAddr, &serverBLen )) < 0){
-        perror("Error receiving message from client");
+        perror("Error receiving message from Server B");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     transBuf[recvLen1] = '\0';
+    
+    // Exception handling
+    // if buf == -1 then too large
+    if (atoi(transBuf) == -1){
+        cerr << "Received error from Server B: File size too large\n";
+        
+        // send error to client to terminate process
+        if (send(new_aws_TCP_sockfd, "-1", strlen("-1"), 0) == -1){
+            perror("Error sending data to client");
+            close(new_aws_TCP_sockfd);
+            exit(EXIT_FAILURE);
+        }
+        
+        exit(EXIT_FAILURE);
+    }
+    
+    
     
     transDelay = atof(transBuf);
     
@@ -359,7 +416,8 @@ void recvFromB(){
         
         // receive propagation delay
         if ((recvLen1 = recvfrom(aws_UDP_sockfd, propBuf, BUFLEN, 0, (struct sockaddr *) &serverBAddr, &serverBLen )) < 0){
-            perror("Error receiving message from client");
+            perror("Error receiving message from Server B");
+            close(new_aws_TCP_sockfd);
             exit(EXIT_FAILURE);
         }
         propBuf[recvLen1] = '\0';
@@ -370,7 +428,8 @@ void recvFromB(){
             
             // receive total delay
             if ((recvLen1 = recvfrom(aws_UDP_sockfd, totBuf, BUFLEN, 0, (struct sockaddr *)&serverBAddr, &serverBLen )) < 0){
-                perror("Error receiving message from client");
+                perror("Error receiving message from Server B");
+                close(new_aws_TCP_sockfd);
                 exit(EXIT_FAILURE);
             }
             totBuf[recvLen1] = '\0';
@@ -398,7 +457,7 @@ void recvFromB(){
     int sizetot = to_string(totDelay[totDelay.size()-1]).length();
     
     cout << "The AWS has received delays from server B:" << endl;
-//    cout << "--------------------------------------------" << endl << "Destination" << setw(sizet) << "Tt" << setw(sizep) << "Tp" << setw(sizetot) << "Delay" << endl << "--------------------------------------------" << endl;
+//    cout << "--------------------------------------------" << endl << "Destination" << setw(sizet) << "Tt" << setw(sizep) << "Tp" << setw(sizetot) << "Delay (sec)" << endl << "--------------------------------------------" << endl;
     cout << "-----------------------------------------------------------------------------" << endl << left << setw(20) << "Destination" << setw(20) << "Tt" << setw(20) << "Tp" << setw(20) << "Delay" << endl << "-----------------------------------------------------------------------------" << endl;
     cout << fixed;
     
@@ -424,6 +483,7 @@ void sendToClient(){
     sprintf(transBuf,"%f", transDelay);
     if (send(new_aws_TCP_sockfd, transBuf, strlen(transBuf), 0) == -1){
         perror("Error sending data to client");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
     
@@ -434,6 +494,7 @@ void sendToClient(){
         sprintf(destBuf,"%d", shortestPathPairs[i].first);
            if (send(new_aws_TCP_sockfd, destBuf, strlen(destBuf), 0) == -1){
                perror("Error sending data to client");
+               close(new_aws_TCP_sockfd);
                exit(EXIT_FAILURE);
            }
         // send destination length
@@ -441,6 +502,7 @@ void sendToClient(){
         sprintf(lenBuf,"%d", shortestPathPairs[i].second);
            if (send(new_aws_TCP_sockfd, lenBuf, strlen(lenBuf), 0) == -1){
                perror("Error sending data to client");
+               close(new_aws_TCP_sockfd);
                exit(EXIT_FAILURE);
            }
         // send propagation delay
@@ -448,6 +510,7 @@ void sendToClient(){
         sprintf(propBuf,"%f", propDelay[i]);
         if (send(new_aws_TCP_sockfd, propBuf, strlen(propBuf), 0) == -1){
             perror("Error sending data to client");
+            close(new_aws_TCP_sockfd);
             exit(EXIT_FAILURE);
         }
         // send total delay
@@ -455,6 +518,7 @@ void sendToClient(){
         sprintf(totBuf,"%f", totDelay[i]);
         if (send(new_aws_TCP_sockfd, totBuf, strlen(totBuf), 0) == -1){
             perror("Error sending data to client");
+            close(new_aws_TCP_sockfd);
             exit(EXIT_FAILURE);
         }
     }
@@ -464,6 +528,7 @@ void sendToClient(){
     // Send NULL char to signify end of communication
     if (send(new_aws_TCP_sockfd, buf, strlen(buf), 0) == -1){
         perror("Error sending data to client");
+        close(new_aws_TCP_sockfd);
         exit(EXIT_FAILURE);
     }
         
@@ -514,7 +579,7 @@ int main (){
         recvFromA();
         //cout << "end" << endl;
         
-        // send data to serverB
+        // send prop speed, trans speed, file size, and shortest paths to serverB
         sendToB();
         // receive delay from server B
         recvFromB();

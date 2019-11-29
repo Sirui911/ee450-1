@@ -111,24 +111,30 @@ void sendToAWS(char* mapID, char* vertexIndex, char* fileSize){
     
     if (send(aws_TCP_sockfd, mapID, strlen(mapID), 0) == -1){
         perror("Error sending data to server socket");
+        close(client_sockfd);
         exit(EXIT_FAILURE);
     }
     for (int i = 0; i < 10000000; i++){}
     if (send(aws_TCP_sockfd, vertexIndex, strlen(vertexIndex), 0) == -1){
         perror("Error sending data to server socket");
+        close(client_sockfd);
         exit(EXIT_FAILURE);
     }
     for (int i = 0; i < 10000000; i++){}
     if (send(aws_TCP_sockfd, fileSize, strlen(fileSize), 0) == -1){
         perror("Error sending data to server socket");
+        close(client_sockfd);
         exit(EXIT_FAILURE);
     }
     
     // get dynamic client port number
     int client_portNum;
     socklen_t len = sizeof(clientAddr);
-    if (getsockname(aws_TCP_sockfd, (struct sockaddr *)&clientAddr, &len) == -1)
+    if (getsockname(aws_TCP_sockfd, (struct sockaddr *)&clientAddr, &len) == -1){
         perror("Error getting client port number");
+        close(client_sockfd);
+        exit(EXIT_FAILURE);
+    }
     else
         client_portNum = ntohs(clientAddr.sin_port);
     
@@ -149,9 +155,23 @@ void recvFromAWS(){
     // recv transmission delay
     if ( (recvLen1 = recv(aws_TCP_sockfd, transBuf, BUFLEN, 0)) == -1){
         perror("Error receiving message from AWS");
+        close(client_sockfd);
         exit(EXIT_FAILURE);
     }
     transBuf[recvLen1] = '\0';
+    
+    // if buf == -2 then the map or source node is incorrect and client should abort
+    if (atoi(transBuf) == -2){
+        cerr << "Received error from AWS: Map or source node invalid\n";
+        close(client_sockfd);
+        exit(EXIT_FAILURE);
+    }
+    else if (atoi(transBuf) == -1){
+        cerr << "Received error from AWS: File size too large\n";
+        close(client_sockfd);
+        exit(EXIT_FAILURE);
+    }
+    
     transDelay = atof(transBuf);
     //    cout << "DEBUG: " << transDelay << endl;
     
@@ -161,6 +181,7 @@ void recvFromAWS(){
         // recv destination node (OR NULL char on last recv)
         if ( (recvLen1 = recv(aws_TCP_sockfd, destBuf, BUFLEN, 0)) == -1){
             perror("Error receiving message from AWS");
+            close(client_sockfd);
             exit(EXIT_FAILURE);
         }
         destBuf[recvLen1] = '\0';
@@ -172,6 +193,7 @@ void recvFromAWS(){
             // recv destination length
             if ( (recvLen1 = recv(aws_TCP_sockfd, lenBuf, BUFLEN, 0)) == -1){
                 perror("Error receiving message from AWS");
+                close(client_sockfd);
                 exit(EXIT_FAILURE);
             }
             lenBuf[recvLen1] = '\0';
@@ -180,6 +202,7 @@ void recvFromAWS(){
             //recv prop delay
             if ( (recvLen1 = recv(aws_TCP_sockfd, propBuf, BUFLEN, 0)) == -1){
                 perror("Error receiving message from AWS");
+                close(client_sockfd);
                 exit(EXIT_FAILURE);
             }
             propBuf[recvLen1] = '\0';
@@ -188,6 +211,7 @@ void recvFromAWS(){
             //recv total delay
             if ( (recvLen1 = recv(aws_TCP_sockfd, totBuf, BUFLEN, 0)) == -1){
                 perror("Error receiving message from AWS");
+                close(client_sockfd);
                 exit(EXIT_FAILURE);
             }
             totBuf[recvLen1] = '\0';
@@ -279,7 +303,7 @@ int main(int argc, const char * argv[]) {
      
      cout << "The client has received results from AWS:" << endl;
      cout << "---------------------------------------------------------------------------------------------------" << endl;
-     cout << left << setw(15) <<"Destination" <<setw(15) << "Min Length" << setw(20) << "Tt" << setw(20) << "Tp" << setw(20) << "Delay" << endl;
+     cout << left << setw(15) <<"Destination" <<setw(15) << "Min Length (km)" << setw(20) << "Tt" << setw(20) << "Tp" << setw(20) << "Delay (sec)" << endl;
     cout << "---------------------------------------------------------------------------------------------------" << endl;
     
     cout << fixed << setprecision(2);

@@ -89,7 +89,7 @@ void init_UDP(){
     }
 }
 
-
+// Function to read map.txt, map index to node, and construct adjacency matrix.
 void constructMap(){
     
     // Open the file "map.txt" for input
@@ -262,7 +262,7 @@ void constructMap(){
     
 } // end of construct map function
 
-
+// Function to recv Map ID and Vertex Index respectively from AWS
 void recvFromAWS(){
     socklen_t awsLen = sizeof(awsAddrUDP);
     //    recv map ID
@@ -280,8 +280,8 @@ void recvFromAWS(){
     cout << "The Server A has received input for finding shortest paths: starting vertex " << recvVertexIndex << " of map " << recvMapID << "." << endl;
 }
 
-// A utility function to find the vertex with minimum distance value, from
-// the set of vertices not yet included in shortest path tree
+
+// determines min distance of nodes not in SPT from https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-greedy-algo-7/
 int graph::minDistance(int dist[], bool spt[]){
     // Initialize min value
     int min = INT_MAX;
@@ -297,7 +297,7 @@ int graph::minDistance(int dist[], bool spt[]){
     return min_node;
 }
 
-// A utility function to print the constructed distance array
+// Prints shortest path to terminal
 void graph::printDijkstra(vector< pair <int, int> > shortestPathPairs)
 {
     
@@ -337,6 +337,12 @@ void graph::dijkstra(int source){
     }
     if (sourceKey == -1){
         cout << "Source node not found in Map" << endl;
+        // send error to AWS
+        int sendLen;
+        if ( ( sendLen = sendto(serverA_sockfd, "-2", strlen("-2"), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to AWS from Server A");
+            exit(EXIT_FAILURE);
+        }
         exit(EXIT_FAILURE);
     }
     
@@ -345,8 +351,7 @@ void graph::dijkstra(int source){
     
     // Find shortest path for all vertices
     for (int count = 0; count < numVert - 1; count++) {
-        // Pick the minimum distance vertex from the set of vertices not
-        // yet processed. u is always equal to src in the first iteration.
+        // check for min distances and store
         int node1 = minDistance(dist, spt);
         
         // add node1 in SPT
@@ -385,7 +390,8 @@ void graph::dijkstra(int source){
     printDijkstra(shortestPathPairs);
 }
 
-// send shortest paths
+// function to send shortest path data to AWS
+// Sends Propagation speed, transmission speed followed by a loop of destination node and distance until the list is exhausted. (all items sent respectively)
 void sendToAws(int graphIndex){
     char buf [BUFLEN];
     char destBuf[BUFLEN];

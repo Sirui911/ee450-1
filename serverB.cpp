@@ -87,11 +87,32 @@ void recvFromAWS(){
     memset(fileSizeBuf, '\0' , sizeof(fileSizeBuf));
     int recvDone = 0; // 0 = not finished receiving, 1 = finished receiving
     
-    
+    // Receive file size
     if ((recvLen1 = recvfrom(serverB_sockfd, fileSizeBuf, BUFLEN, 0, (struct sockaddr *) &awsAddrUDP, &awsLen )) < 0){
         perror("Error receiving message from aws");
         exit(EXIT_FAILURE);
         
+    }
+    fileSizeBuf[recvLen1] = '\0';
+    
+    // Exception handling
+    // if buf == -2 then the map or source node is incorrect and server B should abort
+    if (atoi(fileSizeBuf) == -2){
+        cerr << "Received error from AWS: Map or source node invalid\n";
+        exit(EXIT_FAILURE);
+    }
+    // Overflow when filesize > 2147483647000000000
+    // if buf = -1 then filesize is too big
+    if (atoi(fileSizeBuf) == -1){
+        perror("Received error from AWS");
+        int sendLen;
+        // return error to AWS
+        if ((sendLen = sendto(serverB_sockfd, "-1", strlen("-1"), 0, (struct sockaddr *) &awsAddrUDP, sizeof(struct sockaddr_in))) == -1) {
+            perror("Error sending UDP message to AWS from Server B");
+            exit(EXIT_FAILURE);
+        }
+        
+        exit(EXIT_FAILURE);
     }
     
     fileSize = atol(fileSizeBuf);
@@ -177,7 +198,7 @@ void calcDelay(){
     }
     
     cout << "The Server B has finished the calculation of the delays: " << endl;
-    cout << "-------------------------------------" << endl << left << setw(20) << "Destination" << "Delay" << endl << "-------------------------------------" << endl;
+    cout << "-------------------------------------" << endl << left << setw(20) << "Destination" << "Delay (sec)" << endl << "-------------------------------------" << endl;
     
     for(auto it = totalDelayPairs.begin(); it != totalDelayPairs.end(); it++){
         cout << left << setw(20) << it->first << setw(20) << it->second << endl;
