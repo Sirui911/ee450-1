@@ -38,7 +38,7 @@ char pSpeedBuf[BUFLEN]; // propagation speed
 char tSpeedBuf[BUFLEN]; // transmission speed
 double propSpeed; // in km/s
 double transSpeed; // in Bytes/s
-long fileSize;
+long long fileSize;
 vector<double> propDelay;
 double transDelay;
 vector<double> totDelay;
@@ -115,7 +115,7 @@ void recvFromAWS(){
         exit(EXIT_FAILURE);
     }
     
-    fileSize = atol(fileSizeBuf);
+    fileSize = atoll(fileSizeBuf);
     
     // Recv 1st propagation speed 2nd transmission speed
     memset(pSpeedBuf, '\0' , sizeof(pSpeedBuf));
