@@ -264,8 +264,8 @@ int main(int argc, const char * argv[]) {
         exit(EXIT_FAILURE);
     }
     // check if file size is in range that can be handled (long long)
-    if(argv[3] > 9223372036854775807){
-        cout << "File size must fit in long long (0 - 9223372036854775807)"
+    if(atoll(argv[3]) > 9223372036854775805){
+        cout << "File size must fit in long long (0 - 9223372036854775805)" << endl;
         exit(EXIT_FAILURE);
     }
     

@@ -101,7 +101,7 @@ void recvFromAWS(){
         cerr << "Received error from AWS: Map or source node invalid\n";
         exit(EXIT_FAILURE);
     }
-    // Overflow when filesize > 2147483647000000000
+    // Overflow when filesize > 9223372036854775805
     // if buf = -1 then filesize is too big
     if (atoi(fileSizeBuf) == -1){
         perror("Received error from AWS");
